@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,13 +14,20 @@
         .symbol-match { color: #16a34a; }
         .symbol-mismatch { color: #dc2626; }
         .symbol-gap { color: #9ca3af; }
+        .pairwise-fasta-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 768px) {
+            .pairwise-fasta-inputs {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
-
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
-
     <div class="container mx-auto px-4 py-10 max-w-5xl flex-grow">
-        <!-- Header -->
         <header class="text-center mb-10">
             <div class="flex items-center justify-center gap-3 mb-3">
                 <span class="text-4xl">🧬</span>
@@ -29,16 +35,11 @@
             </div>
             <p class="text-lg text-gray-600">Global (Needleman-Wunsch) & Local (Smith-Waterman)</p>
         </header>
-
-        <!-- Main Application Card -->
         <div class="bg-white shadow-xl rounded-3xl p-8 border border-gray-100">
-
-            <!-- Mode Selection (Pairwise vs Batch) -->
             <div class="mb-8 p-1 bg-gray-100 rounded-full flex w-full md:w-2/3 lg:w-1/2 mx-auto border border-gray-200">
                 <button type="button" id="modePairwiseBtn" onclick="switchMode('pairwise')"
                     class="tab-btn active w-1/2 py-3 rounded-full text-center transition flex items-center justify-center gap-2">
-                    <input type="radio" name="alignmentMode" value="pairwise" checked
-                        class="form-radio text-blue-600 h-5 w-5">
+                    <input type="radio" name="alignmentMode" value="pairwise" checked class="form-radio text-blue-600 h-5 w-5">
                     <span>Pairwise</span>
                 </button>
                 <button type="button" id="modeBatchBtn" onclick="switchMode('batch')"
@@ -47,22 +48,17 @@
                     <span>Batch All-vs-All</span>
                 </button>
             </div>
-
             <form id="alignmentForm" class="space-y-8">
-
-                <!-- 1. PAIRWISE INPUT AREA -->
+                <!-- PAIRWISE INPUT AREA -->
                 <div id="pairwiseSection" class="space-y-6">
                     <div class="border-b border-gray-200">
                         <nav class="flex -mb-px">
                             <button type="button" id="tabManualBtn" onclick="switchPairwiseTab('manual')"
-                                class="tab-btn active whitespace-nowrap py-4 px-8 font-medium text-sm border-transparent border-b-2">Manual
-                                Text</button>
+                                class="tab-btn active whitespace-nowrap py-4 px-8 font-medium text-sm border-transparent border-b-2">Manual Text</button>
                             <button type="button" id="tabUploadBtn" onclick="switchPairwiseTab('upload')"
-                                class="tab-btn whitespace-nowrap py-4 px-8 font-medium text-sm border-transparent border-b-2 text-gray-500 hover:text-gray-700">Upload
-                                FASTA</button>
+                                class="tab-btn whitespace-nowrap py-4 px-8 font-medium text-sm border-transparent border-b-2 text-gray-500 hover:text-gray-700">Upload FASTA</button>
                         </nav>
                     </div>
-
                     <!-- Manual Text Inputs -->
                     <div id="manualInputs" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -76,81 +72,75 @@
                                 class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-400 font-mono text-sm"></textarea>
                         </div>
                     </div>
-
-                    <!-- Upload FASTA Input (Hidden by default) -->
-                    <div id="uploadInput"
-                        class="hidden border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-center">
-                        <label for="pairwiseFastaFile" class="cursor-pointer block">
-                            <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" stroke="currentColor" fill="none"
-                                viewBox="0 0 48 48">
-                                <path
-                                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-31.72-31.72"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                            <span class="mt-2 block text-sm font-medium text-gray-900">Click to upload FASTA file
-                                (pairwise)</span>
-                            <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt</span>
-                            <input type="file" id="pairwiseFastaFile" accept=".fasta, .fa, .txt" class="sr-only">
-                        </label>
-                        <div id="pairwiseFileName" class="mt-2 text-sm text-blue-700 font-medium"></div>
+                    <!-- Upload FASTA Inputs (Two separate files) -->
+                    <div id="uploadInput" class="hidden space-y-4">
+                        <div class="pairwise-fasta-inputs">
+                            <div class="border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-center">
+                                <label for="pairwiseFastaFile1" class="cursor-pointer block">
+                                    <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-31.72-31.72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                    <span class="mt-2 block text-sm font-medium text-gray-900">Sequence 1 FASTA</span>
+                                    <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt</span>
+                                    <input type="file" id="pairwiseFastaFile1" accept=".fasta, .fa, .txt" class="sr-only">
+                                </label>
+                                <div id="pairwiseFileName1" class="mt-2 text-sm text-blue-700 font-medium"></div>
+                            </div>
+                            <div class="border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-center">
+                                <label for="pairwiseFastaFile2" class="cursor-pointer block">
+                                    <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-31.72-31.72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                    <span class="mt-2 block text-sm font-medium text-gray-900">Sequence 2 FASTA</span>
+                                    <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt</span>
+                                    <input type="file" id="pairwiseFastaFile2" accept=".fasta, .fa, .txt" class="sr-only">
+                                </label>
+                                <div id="pairwiseFileName2" class="mt-2 text-sm text-blue-700 font-medium"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <!-- 2. BATCH INPUT AREA (Hidden by default) -->
-                <div id="batchSection"
-                    class="hidden border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-center">
+                <!-- BATCH INPUT AREA -->
+                <div id="batchSection" class="hidden border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-center">
                     <label for="batchFastaFile" class="cursor-pointer block">
-                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" stroke="currentColor" fill="none"
-                            viewBox="0 0 48 48">
-                            <path
-                                d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-31.72-31.72"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-31.72-31.72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
-                        <span class="mt-2 block text-sm font-medium text-gray-900">Click to upload Multi-FASTA file
-                            (Batch All-vs-All)</span>
-                        <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt</span>
+                        <span class="mt-2 block text-sm font-medium text-gray-900">Upload Multi-FASTA file (Batch All-vs-All)</span>
+                        <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt (2-20 sequences)</span>
                         <input type="file" id="batchFastaFile" accept=".fasta, .fa, .txt" class="sr-only">
                     </label>
                     <div id="batchFileName" class="mt-2 text-sm text-blue-700 font-medium"></div>
                 </div>
-
                 <!-- Common Parameters -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-6 pt-6 border-t border-gray-100">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Match Score</label>
-                        <input type="number" id="match" value="5" required
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-1 focus:ring-blue-300">
+                        <input type="number" id="match" value="5" required class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-1 focus:ring-blue-300">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Mismatch Score</label>
-                        <input type="number" id="mismatch" value="-1" required
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-1 focus:ring-blue-300">
+                        <input type="number" id="mismatch" value="-1" required class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-1 focus:ring-blue-300">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Gap Penalty</label>
-                        <input type="number" id="gap" value="-3" required
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-1 focus:ring-blue-300">
+                        <input type="number" id="gap" value="-3" required class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-1 focus:ring-blue-300">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Alignment Type</label>
-                        <select id="alignmentType"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white focus:ring-1 focus:ring-blue-300">
+                        <select id="alignmentType" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white focus:ring-1 focus:ring-blue-300">
                             <option value="global">Global (Needleman-Wunsch)</option>
                             <option value="local">Local (Smith-Waterman)</option>
                         </select>
                     </div>
                 </div>
-
-                <!-- Submit Button -->
                 <div class="pt-6">
-                    <button type="submit" id="submitBtn"
-                        class="w-full bg-blue-600 text-white font-bold text-lg py-4 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 flex items-center justify-center gap-3">
+                    <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white font-bold text-lg py-4 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 flex items-center justify-center gap-3">
                         <span>Run Alignment</span>
                     </button>
                 </div>
             </form>
         </div>
-
         <!-- Results Section -->
         <div id="resultSection" class="mt-12 bg-white shadow-xl rounded-3xl p-8 hidden border border-gray-100">
             <h2 class="text-2xl font-bold text-gray-950 mb-6 border-b pb-4">Alignment Results</h2>
@@ -158,13 +148,15 @@
         </div>
     </div>
 
-    <!-- JavaScript Logic -->
     <script>
         let currentMode = 'pairwise';
         let currentPairwiseTab = 'manual';
 
-        document.getElementById('pairwiseFastaFile').addEventListener('change', function (e) {
-            document.getElementById('pairwiseFileName').textContent = e.target.files[0] ? 'File: ' + e.target.files[0].name : '';
+        document.getElementById('pairwiseFastaFile1').addEventListener('change', function (e) {
+            document.getElementById('pairwiseFileName1').textContent = e.target.files[0] ? 'File: ' + e.target.files[0].name : '';
+        });
+        document.getElementById('pairwiseFastaFile2').addEventListener('change', function (e) {
+            document.getElementById('pairwiseFileName2').textContent = e.target.files[0] ? 'File: ' + e.target.files[0].name : '';
         });
         document.getElementById('batchFastaFile').addEventListener('change', function (e) {
             document.getElementById('batchFileName').textContent = e.target.files[0] ? 'File: ' + e.target.files[0].name : '';
@@ -192,6 +184,7 @@
             let html = `<div class="space-y-4">`;
             html += `<div class="flex gap-4 items-center"><span class="font-semibold text-gray-700">Score:</span><span class="text-2xl font-bold text-blue-700">${score}</span></div>`;
             html += `<div class="flex gap-4 items-center"><span class="font-semibold text-gray-700">Mode:</span><span class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full">${mode === 'global' ? 'Global (Needleman-Wunsch)' : 'Local (Smith-Waterman)'}</span></div>`;
+            html += `<div class="mt-2"><span class="font-semibold text-gray-700">Alignment length:</span> ${align1.length} bp</div>`;
             html += `<div class="mt-4 font-mono text-sm leading-relaxed">`;
             for (let i = 0; i < align1.length; i += width) {
                 const seg1 = align1.substring(i, i + width);
@@ -207,17 +200,76 @@
             return html;
         }
 
-        function renderBatchResult(data) {
-            if (!data.matrix || !data.ids) return `<pre class="bg-gray-100 p-4 rounded-xl">${JSON.stringify(data, null, 2)}</pre>`;
-            let html = '<table class="min-w-full border-collapse border border-gray-200 text-center text-sm"><thead><tr class="bg-gray-100"><th class="border border-gray-200 p-2">ID</th>';
-            data.ids.forEach(id => html += `<th class="border border-gray-200 p-2">${id}</th>`);
+        function renderHeatmap(ids, matrix) {
+            // Find min and max scores for color scaling
+            let minVal = Infinity, maxVal = -Infinity;
+            for (let row of matrix) {
+                for (let val of row) {
+                    if (val < minVal) minVal = val;
+                    if (val > maxVal) maxVal = val;
+                }
+            }
+            const range = maxVal - minVal || 1;
+
+            // Color: low scores = red, medium = yellow, high = green
+            function getColor(val) {
+                const ratio = (val - minVal) / range;
+                const r = Math.round(255 * (1 - ratio));
+                const g = Math.round(255 * ratio);
+                const b = 50;
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+
+            let html = '<div class="space-y-6">';
+            // Heatmap
+            html += '<h3 class="text-lg font-bold text-gray-800">Similarity Heatmap</h3>';
+            html += '<div class="flex gap-1 items-center mb-2 text-xs text-gray-600">';
+            html += '<span class="mr-2">Low</span>';
+            for (let i = 0; i <= 10; i++) {
+                const ratio = i / 10;
+                const r = Math.round(255 * (1 - ratio));
+                const g = Math.round(255 * ratio);
+                html += `<span style="display:inline-block;width:20px;height:20px;background:rgb(${r},${g},50)"></span>`;
+            }
+            html += '<span class="ml-2">High</span>';
+            html += '</div>';
+
+            html += '<div class="overflow-x-auto">';
+            const cellSize = 60;
+            const headerH = 40;
+            const n = ids.length;
+
+            html += `<svg width="${cellSize * n + 80}" height="${cellSize * n + headerH + 40}" xmlns="http://www.w3.org/2000/svg" style="font-family:Arial;font-size:10px;">`;
+            // Column headers
+            for (let j = 0; j < n; j++) {
+                html += `<text x="${cellSize * j + cellSize/2 + 80}" y="${headerH - 5}" text-anchor="middle" transform="rotate(-45,${cellSize * j + cellSize/2 + 80},${headerH - 5})" font-size="9">${ids[j].length > 8 ? ids[j].substring(0,8)+'...' : ids[j]}</text>`;
+            }
+            // Cells
+            for (let i = 0; i < n; i++) {
+                // Row label
+                html += `<text x="75" y="${cellSize * i + cellSize/2 + headerH + 5}" text-anchor="end" font-size="9">${ids[i].length > 8 ? ids[i].substring(0,8)+'...' : ids[i]}</text>`;
+                for (let j = 0; j < n; j++) {
+                    const val = matrix[i][j];
+                    const color = getColor(val);
+                    const x = 80 + cellSize * j;
+                    const y = headerH + cellSize * i;
+                    html += `<rect x="${x}" y="${y}" width="${cellSize-2}" height="${cellSize-2}" fill="${color}" rx="3"/>`;
+                    html += `<text x="${x + (cellSize-2)/2}" y="${y + (cellSize-2)/2 + 1}" text-anchor="middle" font-size="9" fill="white" font-weight="bold">${val}</text>`;
+                }
+            }
+            html += '</svg></div>';
+
+            // Table below heatmap
+            html += '<div class="mt-8"><h3 class="text-lg font-bold text-gray-800 mb-3">Score Matrix (Table)</h3>';
+            html += '<div class="overflow-x-auto"><table class="min-w-full border-collapse border border-gray-200 text-center text-sm"><thead><tr class="bg-gray-100"><th class="border border-gray-200 p-2">ID</th>';
+            ids.forEach(id => html += `<th class="border border-gray-200 p-2">${id}</th>`);
             html += '</tr></thead><tbody>';
-            data.matrix.forEach((row, i) => {
-                html += `<tr><td class="border border-gray-200 p-2 font-semibold bg-gray-50">${data.ids[i]}</td>`;
+            matrix.forEach((row, i) => {
+                html += `<tr><td class="border border-gray-200 p-2 font-semibold bg-gray-50">${ids[i]}</td>`;
                 row.forEach(val => html += `<td class="border border-gray-200 p-2">${val}</td>`);
                 html += '</tr>';
             });
-            html += '</tbody></table>';
+            html += '</tbody></table></div></div></div>';
             return html;
         }
 
@@ -238,7 +290,6 @@
             try {
                 let response;
                 if (currentMode === 'batch') {
-                    // Batch mode: POST /align/batch (multipart form)
                     const file = document.getElementById('batchFastaFile').files[0];
                     if (!file) { alert('Please select a batch FASTA file.'); return; }
                     const formData = new FormData();
@@ -248,26 +299,18 @@
                     formData.append('gap', gap);
                     response = await fetch('/align/batch', { method: 'POST', body: formData });
                 } else if (currentPairwiseTab === 'upload') {
-                    // Pairwise FASTA: POST /align/fasta (multipart form)
-                    const file1 = document.getElementById('pairwiseFastaFile').files[0];
-                    if (!file1) { alert('Please select a FASTA file.'); return; }
+                    const file1 = document.getElementById('pairwiseFastaFile1').files[0];
+                    const file2 = document.getElementById('pairwiseFastaFile2').files[0];
+                    if (!file1 || !file2) { alert('Please select both FASTA files (Sequence 1 and Sequence 2).'); return; }
                     const formData = new FormData();
                     formData.append('file1', file1);
-                    formData.append('file2', file1); // same file for pairwise? No, need two files
-                    // Actually for pairwise FASTA we need two separate files
-                    // Let's use a simpler approach: read the file and send as JSON
-                    const text = await file1.text();
-                    const lines = text.split('\n').filter(l => !l.startsWith('>') && l.trim());
-                    if (lines.length < 2) { alert('FASTA file must contain at least 2 sequences for pairwise alignment.'); return; }
-                    const seq1 = lines[0].trim().toUpperCase();
-                    const seq2 = lines[1].trim().toUpperCase();
-                    response = await fetch('/align', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ seq1, seq2, match: parseInt(match), mismatch: parseInt(mismatch), gap: parseInt(gap), mode: alignmentType })
-                    });
+                    formData.append('file2', file2);
+                    formData.append('match', match);
+                    formData.append('mismatch', mismatch);
+                    formData.append('gap', gap);
+                    formData.append('mode', alignmentType);
+                    response = await fetch('/align/fasta', { method: 'POST', body: formData });
                 } else {
-                    // Pairwise manual text: POST /align (JSON)
                     const seq1 = document.getElementById('seq1').value.trim().toUpperCase();
                     const seq2 = document.getElementById('seq2').value.trim().toUpperCase();
                     if (!seq1 || !seq2) { alert('Please enter both sequences.'); return; }
@@ -282,7 +325,7 @@
                 if (!response.ok) throw new Error(data.error || 'Server error');
 
                 if (data.matrix && data.ids) {
-                    outputContent.innerHTML = renderBatchResult(data);
+                    outputContent.innerHTML = renderHeatmap(data.ids, data.matrix);
                 } else if (data.align1 && data.align2) {
                     outputContent.innerHTML = renderPairwiseResult(data);
                 } else {
@@ -298,5 +341,4 @@
         });
     </script>
 </body>
-
 </html>
