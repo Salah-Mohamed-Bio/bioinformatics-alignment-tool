@@ -321,8 +321,24 @@
                     });
                 }
 
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Server error');
+                let data;
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'Server error');
+                } else {
+                    // Server returned non-JSON (likely an HTML crash/error page)
+                    const text = await response.text();
+                    if (text.includes('Timeout') || text.includes('timed out') || text.includes('504')) {
+                        throw new Error('Vercel timeout: The alignment took too long. Please use shorter sequences or fewer sequences.');
+                    } else if (text.includes('Memory') || text.includes('memory')) {
+                        throw new Error('Out of memory: The sequences are too long. Please use shorter sequences.');
+                    } else if (text.includes('50') && text.includes('0')) {
+                        throw new Error('Server error (500): The backend crashed. This usually means the sequences are too large.');
+                    } else {
+                        throw new Error('Server returned an unexpected response. The file may be too large or the sequences too long.');
+                    }
+                }
 
                 if (data.matrix && data.ids) {
                     outputContent.innerHTML = renderHeatmap(data.ids, data.matrix);

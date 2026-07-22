@@ -176,6 +176,9 @@ def align_batch():
     """
     Run batch all-vs-all alignment from a multi-FASTA file upload.
     """
+    import time
+    start_time = time.time()
+
     if "file" not in request.files:
         return jsonify({"error": "Multi-FASTA file is required."}), 400
 
@@ -199,16 +202,47 @@ def align_batch():
     seqs = [r[1] for r in records]
     n = len(seqs)
 
+    # Check if sequences are too long for batch
+    for i, seq in enumerate(seqs):
+        if len(seq) > 3000:
+            return jsonify({
+                "error": f"Sequence '{ids[i]}' is {len(seq)} bp long. "
+                         f"Vercel free tier limit: 3000 bp per sequence for batch alignment. "
+                         f"Use pairwise mode or run locally."
+            }), 400
+
+    # Estimate if it will timeout (n sequences × n comparisons × seq_length²)
+    # Rough estimate: each comparison of ~1000bp takes ~0.1s on Vercel
+    estimated_pairs = (n * (n + 1)) / 2
+    estimated_time = estimated_pairs * (max(len(s) for s in seqs) / 1000) ** 2 * 0.03
+    if estimated_time > 8:
+        return jsonify({
+            "error": f"Too many/long sequences for Vercel's 10-second timeout. "
+                     f"Estimated time: {estimated_time:.1f}s. "
+                     f"Please use fewer sequences (max {n-1}) or shorter ones, or run locally."
+        }), 400
+
     matrix = []
-    for i in range(n):
-        row = []
-        for j in range(n):
-            if j < i:
-                row.append(matrix[j][i])
-            else:
-                _, _, score = global_alignment(seqs[i], seqs[j], match, mismatch, gap)
-                row.append(score)
-        matrix.append(row)
+    try:
+        for i in range(n):
+            row = []
+            for j in range(n):
+                if j < i:
+                    row.append(matrix[j][i])
+                else:
+                    # Check remaining time
+                    elapsed = time.time() - start_time
+                    if elapsed > 8:
+                        raise TimeoutError("Vercel 10-second timeout approaching. Please use fewer/shorter sequences.")
+                    _, _, score = global_alignment(seqs[i], seqs[j], match, mismatch, gap)
+                    row.append(score)
+            matrix.append(row)
+    except MemoryError:
+        return jsonify({"error": "Not enough memory. Please use shorter sequences or fewer sequences."}), 400
+    except TimeoutError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Alignment error: {str(e)[:200]}"}), 400
 
     return jsonify({
         "ids": ids,
