@@ -17,8 +17,10 @@ app = Flask(__name__)
 # Tell Flask where to find templates
 app.template_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 
+# Vercel free tier has ~4.5MB request limit
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
-MAX_SEQ_LENGTH = 5000
+# Maximum sequence length (increase as needed, but watch memory)
+MAX_SEQ_LENGTH = 10000
 
 
 # Manual CORS
