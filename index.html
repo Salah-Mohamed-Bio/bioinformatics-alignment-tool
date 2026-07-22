@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Bioinformatics Sequence Alignment Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tab-btn.active {
+            border-bottom: 2px solid #3b82f6;
+            color: #2563eb;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+
+    <div class="container mx-auto px-4 py-10 max-w-5xl flex-grow">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <div class="flex items-center justify-center gap-3 mb-3">
+                <span class="text-4xl">🧬</span>
+                <h1 class="text-4xl font-extrabold text-gray-900">Sequence Alignment Tool</h1>
+            </div>
+            <p class="text-lg text-gray-600">Global (Needleman-Wunsch) & Local (Smith-Waterman)</p>
+        </header>
+
+        <!-- Main Application Card -->
+        <div class="bg-white shadow-xl rounded-3xl p-8 border border-gray-100">
+
+            <!-- Mode Selection (Pairwise vs Batch) -->
+            <div class="mb-8 p-1 bg-gray-100 rounded-full flex w-full md:w-2/3 lg:w-1/2 mx-auto border border-gray-200">
+                <button type="button" id="modePairwiseBtn" onclick="switchMode('pairwise')"
+                    class="tab-btn active w-1/2 py-3 rounded-full text-center transition flex items-center justify-center gap-2">
+                    <input type="radio" name="alignmentMode" value="pairwise" checked
+                        class="form-radio text-blue-600 h-5 w-5">
+                    <span>Pairwise</span>
+                </button>
+                <button type="button" id="modeBatchBtn" onclick="switchMode('batch')"
+                    class="tab-btn w-1/2 py-3 rounded-full text-center transition flex items-center justify-center gap-2">
+                    <input type="radio" name="alignmentMode" value="batch" class="form-radio text-blue-600 h-5 w-5">
+                    <span>Batch All-vs-All</span>
+                </button>
+            </div>
+
+            <form id="alignmentForm" class="space-y-8">
+
+                <!-- 1. PAIRWISE INPUT AREA -->
+                <div id="pairwiseSection" class="space-y-6">
+                    <div class="border-b border-gray-200">
+                        <nav class="flex -mb-px">
+                            <button type="button" id="tabManualBtn" onclick="switchPairwiseTab('manual')"
+                                class="tab-btn active whitespace-nowrap py-4 px-8 font-medium text-sm border-transparent border-b-2">Manual
+                                Text</button>
+                            <button type="button" id="tabUploadBtn" onclick="switchPairwiseTab('upload')"
+                                class="tab-btn whitespace-nowrap py-4 px-8 font-medium text-sm border-transparent border-b-2 text-gray-500 hover:text-gray-700">Upload
+                                FASTA</button>
+                        </nav>
+                    </div>
+
+                    <!-- Manual Text Inputs -->
+                    <div id="manualInputs" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-900 mb-2">First Sequence</label>
+                            <textarea id="seq1" rows="5" placeholder="e.g. ACGTGACGT..."
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-400 font-mono text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-900 mb-2">Second Sequence</label>
+                            <textarea id="seq2" rows="5" placeholder="e.g. ACCTGACCT..."
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-400 font-mono text-sm"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Upload FASTA Input (Hidden by default) -->
+                    <div id="uploadInput"
+                        class="hidden border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-center">
+                        <label for="pairwiseFastaFile" class="cursor-pointer block">
+                            <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" stroke="currentColor" fill="none"
+                                viewBox="0 0 48 48">
+                                <path
+                                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-31.72-31.72"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <span class="mt-2 block text-sm font-medium text-gray-900">Click to upload FASTA file
+                                (pairwise)</span>
+                            <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt</span>
+                            <input type="file" id="pairwiseFastaFile" accept=".fasta, .fa, .txt" class="sr-only">
+                        </label>
+                        <div id="pairwiseFileName" class="mt-2 text-sm text-blue-700 font-medium"></div>
+                    </div>
+                </div>
+
+                <!-- 2. BATCH INPUT AREA (Hidden by default) -->
+                <div id="batchSection"
+                    class="hidden border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-center">
+                    <label for="batchFastaFile" class="cursor-pointer block">
+                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" stroke="currentColor" fill="none"
+                            viewBox="0 0 48 48">
+                            <path
+                                d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-31.72-31.72"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <span class="mt-2 block text-sm font-medium text-gray-900">Click to upload Multi-FASTA file
+                            (Batch All-vs-All)</span>
+                        <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt</span>
+                        <input type="file" id="batchFastaFile" accept=".fasta, .fa, .txt" class="sr-only">
+                    </label>
+                    <div id="batchFileName" class="mt-2 text-sm text-blue-700 font-medium"></div>
+                </div>
+
+                <!-- Common Parameters -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 pt-6 border-t border-gray-100">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Match Score</label>
+                        <input type="number" id="match" value="5" required
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-1 focus:ring-blue-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Mismatch Score</label>
+                        <input type="number" id="mismatch" value="-1" required
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-1 focus:ring-blue-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Gap Penalty</label>
+                        <input type="number" id="gap" value="-3" required
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-1 focus:ring-blue-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Alignment Type</label>
+                        <select id="alignmentType"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white focus:ring-1 focus:ring-blue-300">
+                            <option value="global">Global (Needleman-Wunsch)</option>
+                            <option value="local">Local (Smith-Waterman)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-6">
+                    <button type="submit" id="submitBtn"
+                        class="w-full bg-blue-600 text-white font-bold text-lg py-4 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 flex items-center justify-center gap-3">
+                        <span>Run Alignment</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultSection" class="mt-12 bg-white shadow-xl rounded-3xl p-8 hidden border border-gray-100">
+            <h2 class="text-2xl font-bold text-gray-950 mb-6 border-b pb-4">Alignment Results</h2>
+            <div id="outputContent" class="overflow-x-auto"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        let currentMode = 'pairwise';
+        let currentPairwiseTab = 'manual';
+
+        const API_URL = 'https://sequence-alignment-tool-69hm.vercel.app/api/batch-align';
+
+        document.getElementById('pairwiseFastaFile').addEventListener('change', function (e) {
+            document.getElementById('pairwiseFileName').textContent = e.target.files[0] ? 'File: ' + e.target.files[0].name : '';
+        });
+        document.getElementById('batchFastaFile').addEventListener('change', function (e) {
+            document.getElementById('batchFileName').textContent = e.target.files[0] ? 'File: ' + e.target.files[0].name : '';
+        });
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('modePairwiseBtn').classList.toggle('active', mode === 'pairwise');
+            document.getElementById('modeBatchBtn').classList.toggle('active', mode === 'batch');
+            document.getElementById('pairwiseSection').classList.toggle('hidden', mode === 'batch');
+            document.getElementById('batchSection').classList.toggle('hidden', mode === 'pairwise');
+        }
+
+        function switchPairwiseTab(tab) {
+            currentPairwiseTab = tab;
+            document.getElementById('tabManualBtn').classList.toggle('active', tab === 'manual');
+            document.getElementById('tabUploadBtn').classList.toggle('active', tab === 'upload');
+            document.getElementById('manualInputs').classList.toggle('hidden', tab === 'upload');
+            document.getElementById('uploadInput').classList.toggle('hidden', tab === 'manual');
+        }
+
+        document.getElementById('alignmentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            const resultSection = document.getElementById('resultSection');
+            const outputContent = document.getElementById('outputContent');
+
+            const match = document.getElementById('match').value;
+            const mismatch = document.getElementById('mismatch').value;
+            const gap = document.getElementById('gap').value;
+            const alignmentType = document.getElementById('alignmentType').value;
+
+            const formData = new FormData();
+            formData.append('match', match);
+            formData.append('mismatch', mismatch);
+            formData.append('gap', gap);
+            formData.append('alignment_type', alignmentType);
+
+            if (currentMode === 'batch') {
+                const file = document.getElementById('batchFastaFile').files[0];
+                if (!file) { alert('Please select a batch FASTA file.'); return; }
+                formData.append('file', file);
+            } else {
+                if (currentPairwiseTab === 'upload') {
+                    const file = document.getElementById('pairwiseFastaFile').files[0];
+                    if (!file) { alert('Please select a FASTA file.'); return; }
+                    formData.append('file', file);
+                } else {
+                    const seq1 = document.getElementById('seq1').value.trim();
+                    const seq2 = document.getElementById('seq2').value.trim();
+                    if (!seq1 || !seq2) { alert('Please enter both sequences.'); return; }
+                    formData.append('seq1', seq1);
+                    formData.append('seq2', seq2);
+                }
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+
+            try {
+                const response = await fetch(API_URL, { method: 'POST', body: formData });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Server error');
+
+                if (data.matrix && data.ids) {
+                    let html = '<table class="min-w-full border-collapse border border-gray-200 text-center text-sm"><thead><tr class="bg-gray-100"><th class="border border-gray-200 p-2">ID</th>';
+                    data.ids.forEach(id => html += `<th class="border border-gray-200 p-2">${id}</th>`);
+                    html += '</tr></thead><tbody>';
+                    data.matrix.forEach((row, i) => {
+                        html += `<tr><td class="border border-gray-200 p-2 font-semibold bg-gray-50">${data.ids[i]}</td>`;
+                        row.forEach(val => html += `<td class="border border-gray-200 p-2">${val}</td>`);
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table>';
+                    outputContent.innerHTML = html;
+                } else {
+                    outputContent.innerHTML = `<pre class="bg-gray-100 p-4 rounded-xl">${JSON.stringify(data, null, 2)}</pre>`;
+                }
+                resultSection.classList.remove('hidden');
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Run Alignment';
+            }
+        });
+    </script>
+</body>
+
+</html>
