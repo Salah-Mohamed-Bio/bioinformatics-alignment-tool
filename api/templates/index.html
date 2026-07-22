@@ -179,23 +179,96 @@
         }
 
         function renderPairwiseResult(data) {
-            const { align1, align2, symbol, score, mode } = data;
-            const width = 80;
-            let html = `<div class="space-y-4">`;
-            html += `<div class="flex gap-4 items-center"><span class="font-semibold text-gray-700">Score:</span><span class="text-2xl font-bold text-blue-700">${score}</span></div>`;
-            html += `<div class="flex gap-4 items-center"><span class="font-semibold text-gray-700">Mode:</span><span class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full">${mode === 'global' ? 'Global (Needleman-Wunsch)' : 'Local (Smith-Waterman)'}</span></div>`;
-            html += `<div class="mt-2"><span class="font-semibold text-gray-700">Alignment length:</span> ${align1.length} bp</div>`;
-            html += `<div class="mt-4 font-mono text-sm leading-relaxed">`;
+            const { align1, align2, symbol, score, mode, identities, identity_pct, mismatches, mismatch_pct, gaps, gap_pct, aligned_length } = data;
+            const width = 60;
+            
+            // Find original sequence lengths
+            const seq1_len = data.seq1_original ? data.seq1_original.length : align1.replace(/-/g, '').length;
+            const seq2_len = data.seq2_original ? data.seq2_original.length : align2.replace(/-/g, '').length;
+            
+            let html = `<div class="space-y-6">`;
+            
+            // === NCBI-style header ===
+            html += `<div class="bg-gray-50 rounded-xl p-5 border border-gray-200">`;
+            html += `<h3 class="text-lg font-bold text-gray-800 mb-3">Alignment Results</h3>`;
+            html += `<table class="text-sm w-full">`;
+            html += `<tr><td class="font-semibold text-gray-600 pr-6 py-1">Score:</td><td class="text-xl font-bold text-blue-700">${score}</td></tr>`;
+            html += `<tr><td class="font-semibold text-gray-600 pr-6 py-1">Alignment type:</td><td><span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs">${mode === 'global' ? 'Global (Needleman-Wunsch)' : 'Local (Smith-Waterman)'}</span></td></tr>`;
+            html += `<tr><td class="font-semibold text-gray-600 pr-6 py-1">Query length:</td><td>${seq1_len} bp</td></tr>`;
+            html += `<tr><td class="font-semibold text-gray-600 pr-6 py-1">Subject length:</td><td>${seq2_len} bp</td></tr>`;
+            html += `<tr><td class="font-semibold text-gray-600 pr-6 py-1">Aligned length:</td><td>${aligned_length} bp</td></tr>`;
+            html += `</table>`;
+            html += `</div>`;
+            
+            // === Statistics bar (NCBI-style) ===
+            html += `<div class="grid grid-cols-3 gap-3">`;
+            html += `<div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center">`;
+            html += `<div class="text-2xl font-bold text-green-700">${identities}</div>`;
+            html += `<div class="text-xs text-green-600">Identities</div>`;
+            html += `<div class="text-lg font-bold text-green-800">${identity_pct}%</div>`;
+            html += `</div>`;
+            html += `<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center">`;
+            html += `<div class="text-2xl font-bold text-red-700">${mismatches}</div>`;
+            html += `<div class="text-xs text-red-600">Mismatches</div>`;
+            html += `<div class="text-lg font-bold text-red-800">${mismatch_pct}%</div>`;
+            html += `</div>`;
+            html += `<div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">`;
+            html += `<div class="text-2xl font-bold text-gray-700">${gaps}</div>`;
+            html += `<div class="text-xs text-gray-600">Gaps</div>`;
+            html += `<div class="text-lg font-bold text-gray-800">${gap_pct}%</div>`;
+            html += `</div>`;
+            html += `</div>`;
+            
+            // === Alignment view (NCBI-style with coordinates) ===
+            html += `<div class="mt-4">`;
+            html += `<h4 class="text-sm font-bold text-gray-700 mb-2">Alignment</h4>`;
+            html += `<div class="font-mono text-xs leading-relaxed bg-white border border-gray-200 rounded-xl p-4 overflow-x-auto">`;
+            
+            // Track positions excluding gaps
+            let qpos = 0, spos = 0;
             for (let i = 0; i < align1.length; i += width) {
-                const seg1 = align1.substring(i, i + width);
-                const seg2 = align2.substring(i, i + width);
-                const segSym = symbol.substring(i, i + width);
-                html += `<div class="bg-gray-50 p-3 rounded-lg mb-2 overflow-x-auto">`;
-                html += `<div class="text-green-700">${seg1}</div>`;
-                html += `<div class="text-gray-500">${segSym}</div>`;
-                html += `<div class="text-blue-700">${seg2}</div>`;
+                const chunk1 = align1.substring(i, i + width);
+                const chunk2 = align2.substring(i, i + width);
+                const chunkSym = symbol.substring(i, i + width);
+                
+                // Calculate start and end positions for this chunk
+                const qstart = qpos + 1;
+                const sstart = spos + 1;
+                const qchunk = chunk1.replace(/-/g, '');
+                const schunk = chunk2.replace(/-/g, '');
+                qpos += qchunk.length;
+                spos += schunk.length;
+                const qend = qpos;
+                const send = spos;
+                
+                // Query line
+                html += `<div class="flex mb-1">`;
+                html += `<span class="text-gray-400 w-12 text-right mr-3 shrink-0">${qstart}</span>`;
+                html += `<span class="text-blue-700 font-bold">${chunk1}</span>`;
+                html += `<span class="text-gray-400 w-12 ml-3">${qend}</span>`;
+                html += `</div>`;
+                
+                // Symbol line
+                html += `<div class="flex mb-1">`;
+                html += `<span class="text-gray-400 w-12 text-right mr-3 shrink-0"></span>`;
+                html += `<span class="text-gray-500">${chunkSym}</span>`;
+                html += `</div>`;
+                
+                // Subject line
+                html += `<div class="flex mb-3">`;
+                html += `<span class="text-gray-400 w-12 text-right mr-3 shrink-0">${sstart}</span>`;
+                html += `<span class="text-green-700 font-bold">${chunk2}</span>`;
+                html += `<span class="text-gray-400 w-12 ml-3">${send}</span>`;
                 html += `</div>`;
             }
+            
+            html += `</div>`;
+            // Legend
+            html += `<div class="flex gap-4 mt-3 text-xs text-gray-600">`;
+            html += `<span><span class="font-bold text-green-600">|</span> = Match</span>`;
+            html += `<span><span class="font-bold text-red-500">.</span> = Mismatch</span>`;
+            html += `<span><span class="font-bold text-gray-400"> </span> = Gap</span>`;
+            html += `</div>`;
             html += `</div></div>`;
             return html;
         }

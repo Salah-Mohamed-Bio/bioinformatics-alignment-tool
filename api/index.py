@@ -77,7 +77,7 @@ def parse_multi_fasta(text):
 
 
 def run_alignment(seq1, seq2, match, mismatch, gap, mode):
-    """Run global or local alignment and return results."""
+    """Run global or local alignment and return NCBI-style results."""
     if not seq1 or not seq2:
         raise ValueError("Both sequences are required.")
     if len(seq1) > MAX_SEQ_LENGTH or len(seq2) > MAX_SEQ_LENGTH:
@@ -92,12 +92,31 @@ def run_alignment(seq1, seq2, match, mismatch, gap, mode):
     else:
         raise ValueError("mode must be 'global' or 'local'.")
     symbol = get_symbol(align1, align2)
+    
+    # Compute NCBI-style statistics
+    aligned_len = len(align1)
+    identities = sum(1 for a, b in zip(align1, align2) if a == b)
+    gaps = sum(1 for a, b in zip(align1, align2) if a == '-' or b == '-')
+    mismatches = aligned_len - identities - gaps
+    identity_pct = round(100 * identities / aligned_len, 1) if aligned_len > 0 else 0
+    gap_pct = round(100 * gaps / aligned_len, 1) if aligned_len > 0 else 0
+    mismatch_pct = round(100 * mismatches / aligned_len, 1) if aligned_len > 0 else 0
+    
     return {
         "align1": align1,
         "align2": align2,
         "symbol": symbol,
         "score": score,
         "mode": mode,
+        "seq1_original": seq1,
+        "seq2_original": seq2,
+        "aligned_length": aligned_len,
+        "identities": identities,
+        "identity_pct": identity_pct,
+        "mismatches": mismatches,
+        "mismatch_pct": mismatch_pct,
+        "gaps": gaps,
+        "gap_pct": gap_pct,
     }
 
 
