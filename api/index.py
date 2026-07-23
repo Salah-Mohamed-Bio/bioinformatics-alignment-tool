@@ -10,7 +10,7 @@ from flask import Flask, request, jsonify, render_template
 # Add parent directory to path so we can import alignment_logic
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from alignment_logic import global_alignment, local_alignment, get_symbol
+from alignment_logic import global_alignment, local_alignment, get_symbol, neighbor_joining, convert_score_to_distance
 
 app = Flask(__name__)
 
@@ -266,6 +266,96 @@ def align_batch():
     return jsonify({
         "ids": ids,
         "matrix": matrix,
+    }), 200
+
+
+@app.route("/phylogeny", methods=["POST"])
+def phylogeny():
+    """
+    Generate a phylogenetic tree from a multi-FASTA file using Neighbor-Joining.
+    
+    Accepts multipart form with:
+        file - multi-FASTA file (2-15 sequences)
+        match - match score (default: 5)
+        mismatch - mismatch score (default: -1)
+        gap - gap penalty (default: -3)
+    
+    Returns:
+        newick - Newick format tree string
+        ids - sequence labels
+        distance_matrix - normalized distance matrix
+        similarity_matrix - raw similarity matrix
+    """
+    import time
+    start_time = time.time()
+
+    if "file" not in request.files:
+        return jsonify({"error": "Multi-FASTA file is required."}), 400
+
+    try:
+        text = request.files["file"].read().decode("utf-8")
+        records = parse_multi_fasta(text)
+    except Exception as e:
+        return jsonify({"error": f"Failed to parse file: {e}"}), 400
+
+    if len(records) < 3:
+        return jsonify({"error": "Phylogenetic tree requires at least 3 sequences."}), 400
+
+    if len(records) > 15:
+        return jsonify({"error": "Maximum 15 sequences allowed for tree building."}), 400
+
+    match = request.form.get("match", 5, type=int)
+    mismatch = request.form.get("mismatch", -1, type=int)
+    gap = request.form.get("gap", -3, type=int)
+
+    ids = [r[0] for r in records]
+    seqs = [r[1] for r in records]
+    n = len(seqs)
+
+    # Check sequence lengths
+    for i, seq in enumerate(seqs):
+        if len(seq) > 2000:
+            return jsonify({
+                "error": f"Sequence '{ids[i]}' is {len(seq)} bp long. "
+                         f"Maximum 2000 bp for tree building."
+            }), 400
+
+    # Build similarity matrix
+    similarity_matrix = []
+    try:
+        for i in range(n):
+            row = []
+            for j in range(n):
+                elapsed = time.time() - start_time
+                if elapsed > 8:
+                    raise TimeoutError("Vercel timeout approaching. Please use fewer/shorter sequences.")
+                if j < i:
+                    row.append(similarity_matrix[j][i])
+                else:
+                    _, _, score = global_alignment(seqs[i], seqs[j], match, mismatch, gap)
+                    row.append(score)
+            similarity_matrix.append(row)
+    except TimeoutError as e:
+        return jsonify({"error": str(e)}), 400
+    except MemoryError:
+        return jsonify({"error": "Not enough memory for this alignment."}), 400
+    except Exception as e:
+        return jsonify({"error": f"Alignment error: {str(e)[:200]}"}), 400
+
+    # Convert to distance matrix
+    distance_matrix = convert_score_to_distance(similarity_matrix)
+
+    # Build neighbor-joining tree
+    try:
+        newick = neighbor_joining(distance_matrix, ids)
+    except Exception as e:
+        return jsonify({"error": f"Tree building error: {str(e)[:200]}"}), 400
+
+    return jsonify({
+        "newick": newick,
+        "ids": ids,
+        "distance_matrix": distance_matrix,
+        "similarity_matrix": similarity_matrix,
     }), 200
 
 

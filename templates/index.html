@@ -11,9 +11,6 @@
             color: #2563eb;
             font-weight: 600;
         }
-        .symbol-match { color: #16a34a; }
-        .symbol-mismatch { color: #dc2626; }
-        .symbol-gap { color: #9ca3af; }
         .pairwise-fasta-inputs {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -24,6 +21,15 @@
                 grid-template-columns: 1fr;
             }
         }
+        .tree-svg text {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+        }
+        .tree-svg line, .tree-svg path {
+            stroke: #374151;
+            stroke-width: 1.5;
+            fill: none;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
@@ -31,25 +37,29 @@
         <header class="text-center mb-10">
             <div class="flex items-center justify-center gap-3 mb-3">
                 <span class="text-4xl">🧬</span>
-                <h1 class="text-4xl font-extrabold text-gray-900">Sequence Alignment Tool</h1>
+                <h1 class="text-4xl font-extrabold text-gray-900">Bioinformatics Alignment Suite</h1>
             </div>
-            <p class="text-lg text-gray-600">Global (Needleman-Wunsch) & Local (Smith-Waterman)</p>
+            <p class="text-lg text-gray-600">Pairwise & Batch Alignment + Phylogenetic Tree Construction</p>
         </header>
         <div class="bg-white shadow-xl rounded-3xl p-8 border border-gray-100">
-            <div class="mb-8 p-1 bg-gray-100 rounded-full flex w-full md:w-2/3 lg:w-1/2 mx-auto border border-gray-200">
+            <!-- Mode Selection -->
+            <div class="mb-8 p-1 bg-gray-100 rounded-full flex w-full md:w-3/4 lg:w-2/3 mx-auto border border-gray-200">
                 <button type="button" id="modePairwiseBtn" onclick="switchMode('pairwise')"
-                    class="tab-btn active w-1/2 py-3 rounded-full text-center transition flex items-center justify-center gap-2">
-                    <input type="radio" name="alignmentMode" value="pairwise" checked class="form-radio text-blue-600 h-5 w-5">
+                    class="tab-btn active w-1/3 py-3 rounded-full text-center transition flex items-center justify-center gap-2">
                     <span>Pairwise</span>
                 </button>
                 <button type="button" id="modeBatchBtn" onclick="switchMode('batch')"
-                    class="tab-btn w-1/2 py-3 rounded-full text-center transition flex items-center justify-center gap-2">
-                    <input type="radio" name="alignmentMode" value="batch" class="form-radio text-blue-600 h-5 w-5">
-                    <span>Batch All-vs-All</span>
+                    class="tab-btn w-1/3 py-3 rounded-full text-center transition flex items-center justify-center gap-2">
+                    <span>Batch + Heatmap</span>
+                </button>
+                <button type="button" id="modeTreeBtn" onclick="switchMode('tree')"
+                    class="tab-btn w-1/3 py-3 rounded-full text-center transition flex items-center justify-center gap-2">
+                    <span>🌳 Phylogenetic Tree</span>
                 </button>
             </div>
+
             <form id="alignmentForm" class="space-y-8">
-                <!-- PAIRWISE INPUT AREA -->
+                <!-- PAIRWISE INPUT -->
                 <div id="pairwiseSection" class="space-y-6">
                     <div class="border-b border-gray-200">
                         <nav class="flex -mb-px">
@@ -59,7 +69,6 @@
                                 class="tab-btn whitespace-nowrap py-4 px-8 font-medium text-sm border-transparent border-b-2 text-gray-500 hover:text-gray-700">Upload FASTA</button>
                         </nav>
                     </div>
-                    <!-- Manual Text Inputs -->
                     <div id="manualInputs" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label class="block text-sm font-semibold text-gray-900 mb-2">First Sequence</label>
@@ -72,27 +81,18 @@
                                 class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-400 font-mono text-sm"></textarea>
                         </div>
                     </div>
-                    <!-- Upload FASTA Inputs (Two separate files) -->
                     <div id="uploadInput" class="hidden space-y-4">
                         <div class="pairwise-fasta-inputs">
                             <div class="border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-center">
                                 <label for="pairwiseFastaFile1" class="cursor-pointer block">
-                                    <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-31.72-31.72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                    </svg>
                                     <span class="mt-2 block text-sm font-medium text-gray-900">Sequence 1 FASTA</span>
-                                    <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt</span>
                                     <input type="file" id="pairwiseFastaFile1" accept=".fasta, .fa, .txt" class="sr-only">
                                 </label>
                                 <div id="pairwiseFileName1" class="mt-2 text-sm text-blue-700 font-medium"></div>
                             </div>
                             <div class="border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-center">
                                 <label for="pairwiseFastaFile2" class="cursor-pointer block">
-                                    <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-31.72-31.72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                    </svg>
                                     <span class="mt-2 block text-sm font-medium text-gray-900">Sequence 2 FASTA</span>
-                                    <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt</span>
                                     <input type="file" id="pairwiseFastaFile2" accept=".fasta, .fa, .txt" class="sr-only">
                                 </label>
                                 <div id="pairwiseFileName2" class="mt-2 text-sm text-blue-700 font-medium"></div>
@@ -100,18 +100,32 @@
                         </div>
                     </div>
                 </div>
-                <!-- BATCH INPUT AREA -->
-                <div id="batchSection" class="hidden border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-center">
-                    <label for="batchFastaFile" class="cursor-pointer block">
-                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-31.72-31.72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                        </svg>
-                        <span class="mt-2 block text-sm font-medium text-gray-900">Upload Multi-FASTA file (Batch All-vs-All)</span>
-                        <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt (2-20 sequences)</span>
-                        <input type="file" id="batchFastaFile" accept=".fasta, .fa, .txt" class="sr-only">
-                    </label>
-                    <div id="batchFileName" class="mt-2 text-sm text-blue-700 font-medium"></div>
+
+                <!-- BATCH INPUT -->
+                <div id="batchSection" class="hidden space-y-4">
+                    <div class="border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 cursor-pointer text-center">
+                        <label for="batchFastaFile" class="cursor-pointer block">
+                            <span class="mt-2 block text-sm font-medium text-gray-900">Upload Multi-FASTA file (Batch All-vs-All)</span>
+                            <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt (2-20 sequences, max 3000bp each)</span>
+                            <input type="file" id="batchFastaFile" accept=".fasta, .fa, .txt" class="sr-only">
+                        </label>
+                        <div id="batchFileName" class="mt-2 text-sm text-blue-700 font-medium"></div>
+                    </div>
                 </div>
+
+                <!-- PHYLOGENETIC TREE INPUT -->
+                <div id="treeSection" class="hidden space-y-4">
+                    <div class="border-2 border-dashed border-gray-300 rounded-2xl p-6 bg-gray-50 hover:border-purple-400 hover:bg-purple-50 cursor-pointer text-center">
+                        <label for="treeFastaFile" class="cursor-pointer block">
+                            <span class="text-3xl">🌳</span>
+                            <span class="mt-2 block text-sm font-medium text-gray-900">Upload Multi-FASTA to build a phylogenetic tree</span>
+                            <span class="mt-1 block text-xs text-gray-500">.fasta, .fa, .txt (3-15 sequences, max 2000bp each)</span>
+                            <input type="file" id="treeFastaFile" accept=".fasta, .fa, .txt" class="sr-only">
+                        </label>
+                        <div id="treeFileName" class="mt-2 text-sm text-purple-700 font-medium"></div>
+                    </div>
+                </div>
+
                 <!-- Common Parameters -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-6 pt-6 border-t border-gray-100">
                     <div>
@@ -136,14 +150,15 @@
                 </div>
                 <div class="pt-6">
                     <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white font-bold text-lg py-4 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 flex items-center justify-center gap-3">
-                        <span>Run Alignment</span>
+                        <span>Run</span>
                     </button>
                 </div>
             </form>
         </div>
+
         <!-- Results Section -->
         <div id="resultSection" class="mt-12 bg-white shadow-xl rounded-3xl p-8 hidden border border-gray-100">
-            <h2 class="text-2xl font-bold text-gray-950 mb-6 border-b pb-4">Alignment Results</h2>
+            <h2 class="text-2xl font-bold text-gray-950 mb-6 border-b pb-4">Results</h2>
             <div id="outputContent" class="overflow-x-auto"></div>
         </div>
     </div>
@@ -152,22 +167,37 @@
         let currentMode = 'pairwise';
         let currentPairwiseTab = 'manual';
 
-        document.getElementById('pairwiseFastaFile1').addEventListener('change', function (e) {
-            document.getElementById('pairwiseFileName1').textContent = e.target.files[0] ? 'File: ' + e.target.files[0].name : '';
-        });
-        document.getElementById('pairwiseFastaFile2').addEventListener('change', function (e) {
-            document.getElementById('pairwiseFileName2').textContent = e.target.files[0] ? 'File: ' + e.target.files[0].name : '';
-        });
-        document.getElementById('batchFastaFile').addEventListener('change', function (e) {
-            document.getElementById('batchFileName').textContent = e.target.files[0] ? 'File: ' + e.target.files[0].name : '';
-        });
+        function setupFileInput(id, labelId) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', function(e) {
+                const lbl = document.getElementById(labelId);
+                if (lbl) lbl.textContent = e.target.files[0] ? 'File: ' + e.target.files[0].name : '';
+            });
+        }
+        setupFileInput('pairwiseFastaFile1', 'pairwiseFileName1');
+        setupFileInput('pairwiseFastaFile2', 'pairwiseFileName2');
+        setupFileInput('batchFastaFile', 'batchFileName');
+        setupFileInput('treeFastaFile', 'treeFileName');
 
         function switchMode(mode) {
             currentMode = mode;
-            document.getElementById('modePairwiseBtn').classList.toggle('active', mode === 'pairwise');
-            document.getElementById('modeBatchBtn').classList.toggle('active', mode === 'batch');
-            document.getElementById('pairwiseSection').classList.toggle('hidden', mode === 'batch');
-            document.getElementById('batchSection').classList.toggle('hidden', mode === 'pairwise');
+            ['pairwise', 'batch', 'tree'].forEach(m => {
+                document.getElementById('mode' + m.charAt(0).toUpperCase() + m.slice(1) + 'Btn').classList.toggle('active', m === mode);
+            });
+            document.getElementById('pairwiseSection').classList.toggle('hidden', mode !== 'pairwise');
+            document.getElementById('batchSection').classList.toggle('hidden', mode !== 'batch');
+            document.getElementById('treeSection').classList.toggle('hidden', mode !== 'tree');
+            
+            // Update button text
+            const btn = document.getElementById('submitBtn');
+            if (mode === 'tree') {
+                btn.innerHTML = '<span>🌳 Build Phylogenetic Tree</span>';
+            } else if (mode === 'batch') {
+                btn.innerHTML = '<span>Run Batch Alignment</span>';
+            } else {
+                btn.innerHTML = '<span>Run Pairwise Alignment</span>';
+            }
         }
 
         function switchPairwiseTab(tab) {
@@ -178,180 +208,419 @@
             document.getElementById('uploadInput').classList.toggle('hidden', tab === 'manual');
         }
 
+        // ===================== RENDERERS =====================
+
         function renderPairwiseResult(data) {
             const { align1, align2, symbol, score, mode, identities, identity_pct, mismatches, mismatch_pct, gaps, gap_pct, aligned_length } = data;
             const width = 60;
-            
-            // Find original sequence lengths
             const seq1_len = data.seq1_original ? data.seq1_original.length : align1.replace(/-/g, '').length;
             const seq2_len = data.seq2_original ? data.seq2_original.length : align2.replace(/-/g, '').length;
             
-            let html = `<div class="space-y-6">`;
+            let html = '<div class="space-y-6">';
+            html += '<div class="bg-gray-50 rounded-xl p-5 border border-gray-200">';
+            html += '<h3 class="text-lg font-bold text-gray-800 mb-3">Alignment Results</h3>';
+            html += '<table class="text-sm w-full">';
+            html += '<tr><td class="font-semibold text-gray-600 pr-6 py-1">Score:</td><td class="text-xl font-bold text-blue-700">' + score + '</td></tr>';
+            html += '<tr><td class="font-semibold text-gray-600 pr-6 py-1">Type:</td><td><span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs">' + (mode === 'global' ? 'Global (Needleman-Wunsch)' : 'Local (Smith-Waterman)') + '</span></td></tr>';
+            html += '<tr><td class="font-semibold text-gray-600 pr-6 py-1">Query:</td><td>' + seq1_len + ' bp</td></tr>';
+            html += '<tr><td class="font-semibold text-gray-600 pr-6 py-1">Subject:</td><td>' + seq2_len + ' bp</td></tr>';
+            html += '<tr><td class="font-semibold text-gray-600 pr-6 py-1">Aligned:</td><td>' + aligned_length + ' bp</td></tr>';
+            html += '</table></div>';
             
-            // === NCBI-style header ===
-            html += `<div class="bg-gray-50 rounded-xl p-5 border border-gray-200">`;
-            html += `<h3 class="text-lg font-bold text-gray-800 mb-3">Alignment Results</h3>`;
-            html += `<table class="text-sm w-full">`;
-            html += `<tr><td class="font-semibold text-gray-600 pr-6 py-1">Score:</td><td class="text-xl font-bold text-blue-700">${score}</td></tr>`;
-            html += `<tr><td class="font-semibold text-gray-600 pr-6 py-1">Alignment type:</td><td><span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs">${mode === 'global' ? 'Global (Needleman-Wunsch)' : 'Local (Smith-Waterman)'}</span></td></tr>`;
-            html += `<tr><td class="font-semibold text-gray-600 pr-6 py-1">Query length:</td><td>${seq1_len} bp</td></tr>`;
-            html += `<tr><td class="font-semibold text-gray-600 pr-6 py-1">Subject length:</td><td>${seq2_len} bp</td></tr>`;
-            html += `<tr><td class="font-semibold text-gray-600 pr-6 py-1">Aligned length:</td><td>${aligned_length} bp</td></tr>`;
-            html += `</table>`;
-            html += `</div>`;
+            html += '<div class="grid grid-cols-3 gap-3">';
+            html += '<div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center"><div class="text-2xl font-bold text-green-700">' + identities + '</div><div class="text-xs text-green-600">Identities</div><div class="text-lg font-bold text-green-800">' + identity_pct + '%</div></div>';
+            html += '<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center"><div class="text-2xl font-bold text-red-700">' + mismatches + '</div><div class="text-xs text-red-600">Mismatches</div><div class="text-lg font-bold text-red-800">' + mismatch_pct + '%</div></div>';
+            html += '<div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center"><div class="text-2xl font-bold text-gray-700">' + gaps + '</div><div class="text-xs text-gray-600">Gaps</div><div class="text-lg font-bold text-gray-800">' + gap_pct + '%</div></div>';
+            html += '</div>';
             
-            // === Statistics bar (NCBI-style) ===
-            html += `<div class="grid grid-cols-3 gap-3">`;
-            html += `<div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center">`;
-            html += `<div class="text-2xl font-bold text-green-700">${identities}</div>`;
-            html += `<div class="text-xs text-green-600">Identities</div>`;
-            html += `<div class="text-lg font-bold text-green-800">${identity_pct}%</div>`;
-            html += `</div>`;
-            html += `<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center">`;
-            html += `<div class="text-2xl font-bold text-red-700">${mismatches}</div>`;
-            html += `<div class="text-xs text-red-600">Mismatches</div>`;
-            html += `<div class="text-lg font-bold text-red-800">${mismatch_pct}%</div>`;
-            html += `</div>`;
-            html += `<div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">`;
-            html += `<div class="text-2xl font-bold text-gray-700">${gaps}</div>`;
-            html += `<div class="text-xs text-gray-600">Gaps</div>`;
-            html += `<div class="text-lg font-bold text-gray-800">${gap_pct}%</div>`;
-            html += `</div>`;
-            html += `</div>`;
-            
-            // === Alignment view (NCBI-style with coordinates) ===
-            html += `<div class="mt-4">`;
-            html += `<h4 class="text-sm font-bold text-gray-700 mb-2">Alignment</h4>`;
-            html += `<div class="font-mono text-xs leading-relaxed bg-white border border-gray-200 rounded-xl p-4 overflow-x-auto">`;
-            
-            // Track positions excluding gaps
+            html += '<div class="mt-4"><h4 class="text-sm font-bold text-gray-700 mb-2">Alignment</h4>';
+            html += '<div class="font-mono text-xs leading-relaxed bg-white border border-gray-200 rounded-xl p-4 overflow-x-auto">';
             let qpos = 0, spos = 0;
             for (let i = 0; i < align1.length; i += width) {
                 const chunk1 = align1.substring(i, i + width);
                 const chunk2 = align2.substring(i, i + width);
                 const chunkSym = symbol.substring(i, i + width);
-                
-                // Calculate start and end positions for this chunk
-                const qstart = qpos + 1;
-                const sstart = spos + 1;
+                const qstart = qpos + 1, sstart = spos + 1;
                 const qchunk = chunk1.replace(/-/g, '');
                 const schunk = chunk2.replace(/-/g, '');
                 qpos += qchunk.length;
                 spos += schunk.length;
-                const qend = qpos;
-                const send = spos;
-                
-                // Query line
-                html += `<div class="flex mb-1">`;
-                html += `<span class="text-gray-400 w-12 text-right mr-3 shrink-0">${qstart}</span>`;
-                html += `<span class="text-blue-700 font-bold">${chunk1}</span>`;
-                html += `<span class="text-gray-400 w-12 ml-3">${qend}</span>`;
-                html += `</div>`;
-                
-                // Symbol line
-                html += `<div class="flex mb-1">`;
-                html += `<span class="text-gray-400 w-12 text-right mr-3 shrink-0"></span>`;
-                html += `<span class="text-gray-500">${chunkSym}</span>`;
-                html += `</div>`;
-                
-                // Subject line
-                html += `<div class="flex mb-3">`;
-                html += `<span class="text-gray-400 w-12 text-right mr-3 shrink-0">${sstart}</span>`;
-                html += `<span class="text-green-700 font-bold">${chunk2}</span>`;
-                html += `<span class="text-gray-400 w-12 ml-3">${send}</span>`;
-                html += `</div>`;
+                html += '<div class="flex mb-1"><span class="text-gray-400 w-12 text-right mr-3 shrink-0">' + qstart + '</span><span class="text-blue-700 font-bold">' + chunk1 + '</span><span class="text-gray-400 w-12 ml-3">' + qpos + '</span></div>';
+                html += '<div class="flex mb-1"><span class="text-gray-400 w-12 text-right mr-3 shrink-0"></span><span class="text-gray-500">' + chunkSym + '</span></div>';
+                html += '<div class="flex mb-3"><span class="text-gray-400 w-12 text-right mr-3 shrink-0">' + sstart + '</span><span class="text-green-700 font-bold">' + chunk2 + '</span><span class="text-gray-400 w-12 ml-3">' + spos + '</span></div>';
             }
-            
-            html += `</div>`;
-            // Legend
-            html += `<div class="flex gap-4 mt-3 text-xs text-gray-600">`;
-            html += `<span><span class="font-bold text-green-600">|</span> = Match</span>`;
-            html += `<span><span class="font-bold text-red-500">.</span> = Mismatch</span>`;
-            html += `<span><span class="font-bold text-gray-400"> </span> = Gap</span>`;
-            html += `</div>`;
-            html += `</div></div>`;
+            html += '</div>';
+            html += '<div class="flex gap-4 mt-3 text-xs text-gray-600"><span><span class="font-bold text-green-600">|</span> = Match</span><span><span class="font-bold text-red-500">.</span> = Mismatch</span><span><span class="font-bold text-gray-400"> </span> = Gap</span></div></div></div>';
             return html;
         }
 
         function renderHeatmap(ids, matrix) {
-            // Find min and max scores for color scaling
             let minVal = Infinity, maxVal = -Infinity;
-            for (let row of matrix) {
-                for (let val of row) {
-                    if (val < minVal) minVal = val;
-                    if (val > maxVal) maxVal = val;
-                }
-            }
+            for (let row of matrix) for (let val of row) { if (val < minVal) minVal = val; if (val > maxVal) maxVal = val; }
             const range = maxVal - minVal || 1;
-
-            // Color: low scores = red, medium = yellow, high = green
             function getColor(val) {
                 const ratio = (val - minVal) / range;
-                const r = Math.round(255 * (1 - ratio));
-                const g = Math.round(255 * ratio);
-                const b = 50;
-                return `rgb(${r}, ${g}, ${b})`;
+                return 'rgb(' + Math.round(255 * (1 - ratio)) + ',' + Math.round(255 * ratio) + ',50)';
             }
-
             let html = '<div class="space-y-6">';
-            // Heatmap
             html += '<h3 class="text-lg font-bold text-gray-800">Similarity Heatmap</h3>';
-            html += '<div class="flex gap-1 items-center mb-2 text-xs text-gray-600">';
-            html += '<span class="mr-2">Low</span>';
+            html += '<div class="flex gap-1 items-center mb-2 text-xs text-gray-600"><span class="mr-2">Low</span>';
             for (let i = 0; i <= 10; i++) {
                 const ratio = i / 10;
-                const r = Math.round(255 * (1 - ratio));
-                const g = Math.round(255 * ratio);
-                html += `<span style="display:inline-block;width:20px;height:20px;background:rgb(${r},${g},50)"></span>`;
+                html += '<span style="display:inline-block;width:20px;height:20px;background:rgb(' + Math.round(255*(1-ratio)) + ',' + Math.round(255*ratio) + ',50)"></span>';
             }
-            html += '<span class="ml-2">High</span>';
-            html += '</div>';
-
+            html += '<span class="ml-2">High</span></div>';
             html += '<div class="overflow-x-auto">';
-            const cellSize = 60;
-            const headerH = 40;
-            const n = ids.length;
-
-            html += `<svg width="${cellSize * n + 80}" height="${cellSize * n + headerH + 40}" xmlns="http://www.w3.org/2000/svg" style="font-family:Arial;font-size:10px;">`;
-            // Column headers
+            const cellSize = 60, headerH = 40, n = ids.length;
+            html += '<svg width="' + (cellSize * n + 80) + '" height="' + (cellSize * n + headerH + 40) + '" xmlns="http://www.w3.org/2000/svg" style="font-family:Arial;font-size:10px;">';
             for (let j = 0; j < n; j++) {
-                html += `<text x="${cellSize * j + cellSize/2 + 80}" y="${headerH - 5}" text-anchor="middle" transform="rotate(-45,${cellSize * j + cellSize/2 + 80},${headerH - 5})" font-size="9">${ids[j].length > 8 ? ids[j].substring(0,8)+'...' : ids[j]}</text>`;
+                html += '<text x="' + (cellSize * j + cellSize/2 + 80) + '" y="' + (headerH - 5) + '" text-anchor="middle" transform="rotate(-45,' + (cellSize * j + cellSize/2 + 80) + ',' + (headerH - 5) + ')" font-size="9">' + (ids[j].length > 10 ? ids[j].substring(0,10)+'...' : ids[j]) + '</text>';
             }
-            // Cells
             for (let i = 0; i < n; i++) {
-                // Row label
-                html += `<text x="75" y="${cellSize * i + cellSize/2 + headerH + 5}" text-anchor="end" font-size="9">${ids[i].length > 8 ? ids[i].substring(0,8)+'...' : ids[i]}</text>`;
+                html += '<text x="75" y="' + (cellSize * i + cellSize/2 + headerH + 5) + '" text-anchor="end" font-size="9">' + (ids[i].length > 10 ? ids[i].substring(0,10)+'...' : ids[i]) + '</text>';
                 for (let j = 0; j < n; j++) {
-                    const val = matrix[i][j];
-                    const color = getColor(val);
-                    const x = 80 + cellSize * j;
-                    const y = headerH + cellSize * i;
-                    html += `<rect x="${x}" y="${y}" width="${cellSize-2}" height="${cellSize-2}" fill="${color}" rx="3"/>`;
-                    html += `<text x="${x + (cellSize-2)/2}" y="${y + (cellSize-2)/2 + 1}" text-anchor="middle" font-size="9" fill="white" font-weight="bold">${val}</text>`;
+                    const val = matrix[i][j], color = getColor(val);
+                    const x = 80 + cellSize * j, y = headerH + cellSize * i;
+                    html += '<rect x="' + x + '" y="' + y + '" width="' + (cellSize-2) + '" height="' + (cellSize-2) + '" fill="' + color + '" rx="3"/>';
+                    html += '<text x="' + (x + (cellSize-2)/2) + '" y="' + (y + (cellSize-2)/2 + 1) + '" text-anchor="middle" font-size="9" fill="white" font-weight="bold">' + val + '</text>';
                 }
             }
             html += '</svg></div>';
-
-            // Table below heatmap
-            html += '<div class="mt-8"><h3 class="text-lg font-bold text-gray-800 mb-3">Score Matrix (Table)</h3>';
+            html += '<div class="mt-6"><h3 class="text-lg font-bold text-gray-800 mb-3">Score Matrix</h3>';
             html += '<div class="overflow-x-auto"><table class="min-w-full border-collapse border border-gray-200 text-center text-sm"><thead><tr class="bg-gray-100"><th class="border border-gray-200 p-2">ID</th>';
-            ids.forEach(id => html += `<th class="border border-gray-200 p-2">${id}</th>`);
+            ids.forEach(id => html += '<th class="border border-gray-200 p-2">' + id + '</th>');
             html += '</tr></thead><tbody>';
             matrix.forEach((row, i) => {
-                html += `<tr><td class="border border-gray-200 p-2 font-semibold bg-gray-50">${ids[i]}</td>`;
-                row.forEach(val => html += `<td class="border border-gray-200 p-2">${val}</td>`);
+                html += '<tr><td class="border border-gray-200 p-2 font-semibold bg-gray-50">' + ids[i] + '</td>';
+                row.forEach(val => html += '<td class="border border-gray-200 p-2">' + val + '</td>');
                 html += '</tr>';
             });
             html += '</tbody></table></div></div></div>';
             return html;
         }
 
+        // Parse Newick and render SVG phylogenetic tree
+        function renderPhylogeneticTree(data) {
+            const { newick, ids, distance_matrix, similarity_matrix } = data;
+            let html = '<div class="space-y-6">';
+            
+            // Tree visualization
+            html += '<h3 class="text-lg font-bold text-gray-800">🌳 Phylogenetic Tree (Neighbor-Joining)</h3>';
+            html += '<div class="bg-white border border-gray-200 rounded-xl p-4 tree-svg overflow-x-auto">';
+            html += parseNewickToSvg(newick);
+            html += '</div>';
+            
+            // Newick string
+            html += '<div class="mt-4"><h4 class="text-sm font-bold text-gray-700 mb-2">Newick Format</h4>';
+            html += '<pre class="bg-gray-100 p-3 rounded-lg text-xs overflow-x-auto">' + newick + '</pre></div>';
+            
+            // Distance matrix table
+            if (distance_matrix && ids) {
+                html += '<div class="mt-6"><h3 class="text-lg font-bold text-gray-800 mb-3">Distance Matrix</h3>';
+                html += '<div class="overflow-x-auto"><table class="min-w-full border-collapse border border-gray-200 text-center text-sm"><thead><tr class="bg-gray-100"><th class="border border-gray-200 p-2">ID</th>';
+                ids.forEach(id => html += '<th class="border border-gray-200 p-2">' + id + '</th>');
+                html += '</tr></thead><tbody>';
+                distance_matrix.forEach((row, i) => {
+                    html += '<tr><td class="border border-gray-200 p-2 font-semibold bg-gray-50">' + ids[i] + '</td>';
+                    row.forEach(val => html += '<td class="border border-gray-200 p-2">' + (typeof val === 'number' ? val.toFixed(4) : val) + '</td>');
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div></div>';
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        // Parse Newick string and render as SVG cladogram
+        function parseNewickToSvg(newickStr) {
+            if (!newickStr) return '<p class="text-red-500">No tree data available.</p>';
+            try {
+                // Simple recursive parser for Newick
+                // Returns a tree object
+                function parseNewick(s) {
+                    s = s.trim();
+                    if (s.endsWith(';')) s = s.slice(0, -1).trim();
+                    
+                    function parseNode(str) {
+                        str = str.trim();
+                        // Check if it's a subtree (starts with '(')
+                        if (str.startsWith('(')) {
+                            let depth = 0, i = 0, splitPos = -1;
+                            for (let j = 0; j < str.length; j++) {
+                                if (str[j] === '(') depth++;
+                                else if (str[j] === ')') depth--;
+                                else if (str[j] === ',' && depth === 1 && splitPos === -1) splitPos = j;
+                            }
+                            // Find internal node label and branch length
+                            const closeParen = str.lastIndexOf(')');
+                            const afterParen = str.substring(closeParen + 1).trim();
+                            let label = '', branchLen = 0;
+                            if (afterParen.includes(':')) {
+                                const parts = afterParen.split(':');
+                                label = parts[0].trim();
+                                branchLen = parseFloat(parts[1]) || 0;
+                            } else {
+                                label = afterParen;
+                            }
+                            
+                            const inner = str.substring(1, closeParen);
+                            // Find the comma that splits children
+                            let commaIdx = -1, dep = 0;
+                            for (let k = 0; k < inner.length; k++) {
+                                if (inner[k] === '(') dep++;
+                                else if (inner[k] === ')') dep--;
+                                else if (inner[k] === ',' && dep === 0) { commaIdx = k; break; }
+                            }
+                            let leftStr, rightStr;
+                            if (commaIdx !== -1) {
+                                leftStr = inner.substring(0, commaIdx);
+                                rightStr = inner.substring(commaIdx + 1);
+                            } else {
+                                leftStr = inner;
+                                rightStr = '';
+                            }
+                            return {
+                                type: 'node',
+                                label: label || '',
+                                branch_length: branchLen,
+                                left: parseNode(leftStr),
+                                right: rightStr ? parseNode(rightStr) : null
+                            };
+                        } else {
+                            // Leaf
+                            let label = str;
+                            let branchLen = 0;
+                            if (str.includes(':')) {
+                                const parts = str.split(':');
+                                label = parts[0].trim();
+                                branchLen = parseFloat(parts[1]) || 0;
+                            }
+                            return { type: 'leaf', label: label, branch_length: branchLen };
+                        }
+                    }
+                    return parseNode(s);
+                }
+
+                const root = parseNewick(newickStr);
+                
+                // Calculate tree dimensions for SVG
+                function countLeaves(node) {
+                    if (!node) return 0;
+                    if (node.type === 'leaf') return 1;
+                    return countLeaves(node.left) + countLeaves(node.right);
+                }
+                
+                function maxDepth(node) {
+                    if (!node) return 0;
+                    if (node.type === 'leaf') return node.branch_length || 0.1;
+                    const left = maxDepth(node.left) + (node.left ? node.left.branch_length || 0 : 0);
+                    const right = node.right ? maxDepth(node.right) + (node.right.branch_length || 0) : 0;
+                    return Math.max(left, right);
+                }
+                
+                const numLeaves = countLeaves(root);
+                const treeDepth = maxDepth(root) || 1;
+                
+                // SVG dimensions
+                const leafSpacing = 30;
+                const topMargin = 30;
+                const leftMargin = 80;
+                const rightMargin = 150;
+                const widthPerUnit = 180 / treeDepth;
+                
+                const svgHeight = Math.max(200, numLeaves * leafSpacing + topMargin * 2);
+                const svgWidth = leftMargin + 200 + rightMargin;
+                
+                // Assign positions to leaves
+                let leafPositions = {};
+                let leafCounter = 0;
+                function assignLeafPos(node, x, y, parentX) {
+                    if (!node) return y;
+                    if (node.type === 'leaf') {
+                        leafPositions[node.label] = { x: leftMargin + (node.branch_length || 0.1) * widthPerUnit, y: y };
+                        return y + leafSpacing;
+                    }
+                    // Internal node
+                    const childY = y;
+                    const newY = assignLeafPos(node.left, x + (node.branch_length || 0) * widthPerUnit, y, x);
+                    const rightY = node.right ? assignLeafPos(node.right, x + (node.right.branch_length || 0) * widthPerUnit, newY, x) : newY;
+                    const midY = (y + (node.right ? newY : y)) / 2;
+                    // If leaf positions exist for children, compute mid
+                    return node.right ? rightY : newY;
+                }
+                
+                // Re-implement with better positioning
+                function layoutTree(node) {
+                    if (!node) return { height: 0, leaves: [], x: 0, y: 0 };
+                    const branch = node.branch_length || 0.1;
+                    if (node.type === 'leaf') {
+                        return { height: 1, leaves: [{ label: node.label, depth: branch, branch: branch }], x: 0, y: 0 };
+                    }
+                    const left = layoutTree(node.left);
+                    const right = node.right ? layoutTree(node.right) : { height: 0, leaves: [], x: 0, y: 0 };
+                    const totalLeaves = left.leaves.concat(right.leaves);
+                    const maxH = Math.max(left.height, right.height);
+                    
+                    // Assign Y positions
+                    const leftStart = (right.height - left.height) / 2;
+                    const leftLeaves = left.leaves.map((l, idx) => ({
+                        label: l.label,
+                        y: (leftStart + idx) * leafSpacing + topMargin,
+                        depth: l.depth + branch,
+                        branch: l.branch
+                    }));
+                    const rightLeaves = right.leaves.map((l, idx) => ({
+                        label: l.label,
+                        y: (left.height + idx) * leafSpacing + topMargin,
+                        depth: l.depth + branch,
+                        branch: l.branch
+                    }));
+                    
+                    return {
+                        height: left.height + right.height,
+                        leaves: leftLeaves.concat(rightLeaves),
+                        x: branch,
+                        y: 0
+                    };
+                }
+                
+                const layout = layoutTree(root);
+                const maxDepthVal = Math.max(...layout.leaves.map(l => l.depth));
+                const scaleX = 200 / (maxDepthVal || 1);
+                
+                let svg = '<svg width="' + svgWidth + '" height="' + svgHeight + '" xmlns="http://www.w3.org/2000/svg" class="w-full">';
+                
+                // Draw leaves and branches recursively
+                let lines = [];
+                let labels = [];
+                
+                function drawNode(node, x, yStart, yEnd) {
+                    if (!node) return;
+                    const branch = (node.branch_length || 0.1) * scaleX;
+                    const newX = x + branch;
+                    
+                    if (node.type === 'leaf') {
+                        // Horizontal line to leaf
+                        lines.push({ x1: x, y1: yStart, x2: newX, y2: yStart });
+                        // Label
+                        labels.push({ x: newX + 5, y: yStart + 4, text: node.label });
+                    } else {
+                        // Internal node
+                        if (node.left) {
+                            const leftLeaf = layout.leaves.find(l => 
+                                node.left.type === 'leaf' && l.label === node.left.label
+                            );
+                            // This is simplified - for a proper implementation we pass the leaf positions
+                        }
+                        
+                        // Draw children
+                        if (node.left && node.right) {
+                            // Get the leaf positions for left and right subtrees
+                            const leftLabels = node.left.type === 'leaf' ? 
+                                [node.left.label] : getAllLeafLabels(node.left);
+                            const rightLabels = node.right.type === 'leaf' ? 
+                                [node.right.label] : getAllLeafLabels(node.right);
+                            
+                            const leftYStart = getYForLabel(layout.leaves, leftLabels[0]);
+                            const leftYEnd = getYForLabel(layout.leaves, leftLabels[leftLabels.length - 1]);
+                            const rightYStart = getYForLabel(layout.leaves, rightLabels[0]);
+                            const rightYEnd = getYForLabel(layout.leaves, rightLabels[rightLabels.length - 1]);
+                            
+                            const leftMidY = (leftYStart + leftYEnd) / 2;
+                            const rightMidY = (rightYStart + rightYEnd) / 2;
+                            
+                            // Vertical line connecting children
+                            const vertY1 = Math.min(leftMidY, rightMidY);
+                            const vertY2 = Math.max(leftMidY, rightMidY);
+                            lines.push({ x1: newX, y1: vertY1, x2: newX, y2: vertY2 });
+                            
+                            // Horizontal lines to children
+                            lines.push({ x1: x, y1: leftMidY, x2: newX, y2: leftMidY });
+                            lines.push({ x1: x, y1: rightMidY, x2: newX, y2: rightMidY });
+                            
+                            // Recursively draw
+                            drawNode(node.left, newX, leftYStart, leftYEnd);
+                            drawNode(node.right, newX, rightYStart, rightYEnd);
+                        } else if (node.left) {
+                            // Single child - just pass through
+                            drawNode(node.left, newX, yStart, yEnd);
+                        }
+                    }
+                }
+                
+                function getAllLeafLabels(node) {
+                    if (!node) return [];
+                    if (node.type === 'leaf') return [node.label];
+                    return getAllLeafLabels(node.left).concat(node.right ? getAllLeafLabels(node.right) : []);
+                }
+                
+                function getYForLabel(leaves, label) {
+                    const found = leaves.find(l => l.label === label);
+                    return found ? found.y : topMargin;
+                }
+                
+                // Draw the tree
+                if (root) {
+                    const allLabels = layout.leaves.map(l => l.label);
+                    if (allLabels.length > 0) {
+                        const firstY = layout.leaves[0].y;
+                        const lastY = layout.leaves[layout.leaves.length - 1].y;
+                        const rootY = (firstY + lastY) / 2;
+                        
+                        lines.push({ x1: leftMargin, y1: rootY, x2: leftMargin + 5, y2: rootY });
+                        
+                        // Draw the root and its children
+                        if (root.left && root.right) {
+                            const leftLeafLabels = getAllLeafLabels(root.left);
+                            const rightLeafLabels = getAllLeafLabels(root.right);
+                            const leftY1 = getYForLabel(layout.leaves, leftLeafLabels[0]);
+                            const leftY2 = getYForLabel(layout.leaves, leftLeafLabels[leftLeafLabels.length - 1]);
+                            const rightY1 = getYForLabel(layout.leaves, rightLeafLabels[0]);
+                            const rightY2 = getYForLabel(layout.leaves, rightLeafLabels[rightLeafLabels.length - 1]);
+                            
+                            const leftMidY = (leftY1 + leftY2) / 2;
+                            const rightMidY = (rightY1 + rightY2) / 2;
+                            
+                            lines.push({ x1: leftMargin + 5, y1: leftMidY, x2: leftMargin + 10, y2: leftMidY });
+                            lines.push({ x1: leftMargin + 5, y1: rightMidY, x2: leftMargin + 10, y2: rightMidY });
+                            lines.push({ x1: leftMargin + 5, y1: leftMidY, x2: leftMargin + 5, y2: rightMidY });
+                            
+                            drawNode(root.left, leftMargin + 10, leftY1, leftY2);
+                            drawNode(root.right, leftMargin + 10, rightY1, rightY2);
+                        }
+                    }
+                    // Leaf labels at final positions
+                    layout.leaves.forEach(l => {
+                        labels.push({ x: svgWidth - rightMargin + 5, y: l.y + 4, text: l.label });
+                    });
+                }
+                
+                // Render lines
+                lines.forEach(l => {
+                    svg += '<line x1="' + l.x1 + '" y1="' + l.y1 + '" x2="' + l.x2 + '" y2="' + l.y2 + '" stroke="#374151" stroke-width="1.5"/>';
+                });
+                
+                // Render labels
+                labels.forEach(l => {
+                    svg += '<text x="' + l.x + '" y="' + l.y + '" font-size="11" fill="#1f2937">' + l.text + '</text>';
+                });
+                
+                svg += '</svg>';
+                return svg;
+                
+            } catch (e) {
+                return '<p class="text-red-500">Error rendering tree: ' + e.message + '</p>';
+            }
+        }
+
+        // ===================== FORM SUBMIT =====================
+
         document.getElementById('alignmentForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitBtn = document.getElementById('submitBtn');
             const resultSection = document.getElementById('resultSection');
             const outputContent = document.getElementById('outputContent');
-
             const match = document.getElementById('match').value;
             const mismatch = document.getElementById('mismatch').value;
             const gap = document.getElementById('gap').value;
@@ -362,7 +631,18 @@
 
             try {
                 let response;
-                if (currentMode === 'batch') {
+                
+                if (currentMode === 'tree') {
+                    const file = document.getElementById('treeFastaFile').files[0];
+                    if (!file) { alert('Please select a multi-FASTA file.'); return; }
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('match', match);
+                    formData.append('mismatch', mismatch);
+                    formData.append('gap', gap);
+                    response = await fetch('/phylogeny', { method: 'POST', body: formData });
+                    
+                } else if (currentMode === 'batch') {
                     const file = document.getElementById('batchFastaFile').files[0];
                     if (!file) { alert('Please select a batch FASTA file.'); return; }
                     const formData = new FormData();
@@ -371,10 +651,11 @@
                     formData.append('mismatch', mismatch);
                     formData.append('gap', gap);
                     response = await fetch('/align/batch', { method: 'POST', body: formData });
+                    
                 } else if (currentPairwiseTab === 'upload') {
                     const file1 = document.getElementById('pairwiseFastaFile1').files[0];
                     const file2 = document.getElementById('pairwiseFastaFile2').files[0];
-                    if (!file1 || !file2) { alert('Please select both FASTA files (Sequence 1 and Sequence 2).'); return; }
+                    if (!file1 || !file2) { alert('Please select both FASTA files.'); return; }
                     const formData = new FormData();
                     formData.append('file1', file1);
                     formData.append('file2', file2);
@@ -383,6 +664,7 @@
                     formData.append('gap', gap);
                     formData.append('mode', alignmentType);
                     response = await fetch('/align/fasta', { method: 'POST', body: formData });
+                    
                 } else {
                     const seq1 = document.getElementById('seq1').value.trim().toUpperCase();
                     const seq2 = document.getElementById('seq2').value.trim().toUpperCase();
@@ -400,32 +682,29 @@
                     data = await response.json();
                     if (!response.ok) throw new Error(data.error || 'Server error');
                 } else {
-                    // Server returned non-JSON (likely an HTML crash/error page)
                     const text = await response.text();
-                    if (text.includes('Timeout') || text.includes('timed out') || text.includes('504')) {
-                        throw new Error('Vercel timeout: The alignment took too long. Please use shorter sequences or fewer sequences.');
-                    } else if (text.includes('Memory') || text.includes('memory')) {
-                        throw new Error('Out of memory: The sequences are too long. Please use shorter sequences.');
-                    } else if (text.includes('50') && text.includes('0')) {
-                        throw new Error('Server error (500): The backend crashed. This usually means the sequences are too large.');
+                    if (text.includes('Timeout') || text.includes('504')) {
+                        throw new Error('Vercel timeout. Use shorter/fewer sequences.');
                     } else {
-                        throw new Error('Server returned an unexpected response. The file may be too large or the sequences too long.');
+                        throw new Error('Server error. File may be too large.');
                     }
                 }
 
-                if (data.matrix && data.ids) {
+                if (data.newick) {
+                    outputContent.innerHTML = renderPhylogeneticTree(data);
+                } else if (data.matrix && data.ids) {
                     outputContent.innerHTML = renderHeatmap(data.ids, data.matrix);
                 } else if (data.align1 && data.align2) {
                     outputContent.innerHTML = renderPairwiseResult(data);
                 } else {
-                    outputContent.innerHTML = `<pre class="bg-gray-100 p-4 rounded-xl">${JSON.stringify(data, null, 2)}</pre>`;
+                    outputContent.innerHTML = '<pre class="bg-gray-100 p-4 rounded-xl">' + JSON.stringify(data, null, 2) + '</pre>';
                 }
                 resultSection.classList.remove('hidden');
             } catch (err) {
                 alert('Error: ' + err.message);
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Run Alignment';
+                submitBtn.textContent = 'Run';
             }
         });
     </script>

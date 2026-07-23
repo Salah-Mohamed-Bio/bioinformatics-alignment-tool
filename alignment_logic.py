@@ -145,6 +145,167 @@ def get_symbol(align1, align2):
     return symbol
 
 
+# ---------------------------------------------------------------------------
+# Neighbor-Joining (NJ) Phylogenetic Tree Construction
+# ---------------------------------------------------------------------------
+
+def neighbor_joining(distance_matrix, labels):
+    """
+    Construct a phylogenetic tree using the Neighbor-Joining algorithm.
+    
+    Parameters:
+        distance_matrix: list of lists - symmetric distance matrix (n x n)
+        labels: list of strings - sequence/OTU labels
+        
+    Returns:
+        Newick format tree string
+    """
+    import copy
+    n = len(labels)
+    if n < 2:
+        return ""
+    if n == 2:
+        return f"({labels[0]}:{distance_matrix[0][1]/2:.4f},{labels[1]}:{distance_matrix[0][1]/2:.4f})"
+    
+    # Convert to float and work with copies
+    D = [row[:] for row in distance_matrix]
+    ids = labels[:]
+    
+    # Work with a list of current (remaining) taxa indices
+    taxa = list(range(n))
+    # Track the names of active nodes
+    active = {i: labels[i] for i in range(n)}
+    
+    # Newick tree pieces: for each node, store (left_child, right_child, left_dist, right_dist)
+    # We'll build the tree bottom-up
+    tree = {}
+    next_id = n  # For naming internal nodes
+    
+    while len(taxa) > 2:
+        m = len(taxa)
+        
+        # Step 1: Calculate total distances
+        total_dist = {}
+        for i in taxa:
+            total_dist[i] = sum(D[i][j] for j in taxa)
+        
+        # Step 2: Calculate Q matrix (for this subset)
+        Q = {}
+        min_q = float('inf')
+        min_pair = None
+        
+        for idx_i, i in enumerate(taxa):
+            for idx_j, j in enumerate(taxa):
+                if i >= j:
+                    continue
+                q_val = (m - 2) * D[i][j] - total_dist[i] - total_dist[j]
+                Q[(i, j)] = q_val
+                if q_val < min_q:
+                    min_q = q_val
+                    min_pair = (i, j)
+        
+        i, j = min_pair
+        
+        # Step 3: Calculate distances from new node u to i and j
+        d_iu = 0.5 * D[i][j] + (total_dist[i] - total_dist[j]) / (2 * (m - 2))
+        d_ju = D[i][j] - d_iu
+        
+        # Step 4: Create new node u
+        u = next_id
+        next_id += 1
+        
+        # Store tree info
+        tree[u] = {
+            'left': i,
+            'right': j,
+            'left_dist': round(d_iu, 4),
+            'right_dist': round(d_ju, 4),
+            'name': f"Internal{u}"
+        }
+        
+        # Step 5: Calculate distances from u to all other active nodes
+        new_D_row = [0.0] * n
+        for k in taxa:
+            if k != i and k != j:
+                new_D_row[k] = 0.5 * (D[i][k] + D[j][k] - D[i][j])
+        
+        # Step 6: Replace i and j with u
+        taxa.remove(j)
+        taxa.remove(i)
+        
+        # Update distance matrix for u
+        for k in taxa:
+            D[u][k] = new_D_row[k]
+            D[k][u] = new_D_row[k]
+        
+        taxa.append(u)
+        active[u] = f"Internal{u}"
+    
+    # Final step: connect the last two nodes
+    if len(taxa) == 2:
+        i, j = taxa
+        dist = D[i][j]
+        # Return Newick string
+        newick = _build_newick(i, j, dist, tree, active)
+        return newick
+    
+    return ""
+
+
+def _build_newick(i, j, dist, tree, active):
+    """Build Newick string recursively."""
+    def get_subtree(node, branch_length=0):
+        if node in active and node < len(active) - 1:
+            # Check if it's a leaf (original label)
+            if isinstance(active[node], str) and not active[node].startswith("Internal"):
+                return f"{active[node]}:{branch_length:.4f}"
+        
+        if node in tree:
+            left = tree[node]['left']
+            right = tree[node]['right']
+            left_dist = tree[node]['left_dist']
+            right_dist = tree[node]['right_dist']
+            left_str = get_subtree(left, left_dist)
+            right_str = get_subtree(right, right_dist)
+            return f"({left_str},{right_str}):{branch_length:.4f}"
+        
+        # Leaf node
+        name = active.get(node, f"Taxon{node}")
+        return f"{name}:{branch_length:.4f}"
+    
+    # Handle the final two nodes
+    left_str = get_subtree(i, 0)
+    right_str = get_subtree(j, 0)
+    return f"({left_str},{right_str});"
+
+
+def convert_score_to_distance(similarity_matrix):
+    """
+    Convert a similarity score matrix to a distance matrix.
+    Uses: distance = (max_score - score) / max_score  (normalized)
+    """
+    n = len(similarity_matrix)
+    if n == 0:
+        return []
+    
+    # Find max and min
+    max_val = max(max(row) for row in similarity_matrix)
+    min_val = min(min(row) for row in similarity_matrix)
+    range_val = max_val - min_val if max_val != min_val else 1
+    
+    dist = []
+    for i in range(n):
+        row = []
+        for j in range(n):
+            # Normalize distance: 1 - (score - min) / range
+            d = 1.0 - (similarity_matrix[i][j] - min_val) / range_val
+            if i == j:
+                d = 0.0  # same sequence = zero distance
+            row.append(round(d, 6))
+        dist.append(row)
+    return dist
+
+
 if __name__=="__main__":
 
     seq1 = input("enter first sequenec: ").strip().upper()
@@ -174,16 +335,3 @@ if __name__=="__main__":
     print("\nAlignment")
     print_alignment(align1, align2, symbol)
     print("\nscore =",score)
-
-
-
-                                                      
-
-  
-  
-
-
-
- 
-
-
