@@ -332,283 +332,174 @@
             return html;
         }
 
-        // Parse Newick string and render as SVG cladogram
+        // Parse Newick string and render as SVG cladogram (simplified, properly arranged)
         function parseNewickToSvg(newickStr) {
-            if (!newickStr) return '<p class="text-red-500">No tree data available.</p>';
+            if (!newickStr || newickStr === ';' || newickStr === '') {
+                return '<p class="text-gray-500 italic">No tree data available.</p>';
+            }
             try {
-                // Simple recursive parser for Newick
-                // Returns a tree object
-                function parseNewick(s) {
-                    s = s.trim();
-                    if (s.endsWith(';')) s = s.slice(0, -1).trim();
-                    
-                    function parseNode(str) {
-                        str = str.trim();
-                        // Check if it's a subtree (starts with '(')
-                        if (str.startsWith('(')) {
-                            let depth = 0, i = 0, splitPos = -1;
-                            for (let j = 0; j < str.length; j++) {
-                                if (str[j] === '(') depth++;
-                                else if (str[j] === ')') depth--;
-                                else if (str[j] === ',' && depth === 1 && splitPos === -1) splitPos = j;
-                            }
-                            // Find internal node label and branch length
-                            const closeParen = str.lastIndexOf(')');
-                            const afterParen = str.substring(closeParen + 1).trim();
-                            let label = '', branchLen = 0;
-                            if (afterParen.includes(':')) {
-                                const parts = afterParen.split(':');
-                                label = parts[0].trim();
-                                branchLen = parseFloat(parts[1]) || 0;
-                            } else {
-                                label = afterParen;
-                            }
-                            
-                            const inner = str.substring(1, closeParen);
-                            // Find the comma that splits children
-                            let commaIdx = -1, dep = 0;
-                            for (let k = 0; k < inner.length; k++) {
-                                if (inner[k] === '(') dep++;
-                                else if (inner[k] === ')') dep--;
-                                else if (inner[k] === ',' && dep === 0) { commaIdx = k; break; }
-                            }
-                            let leftStr, rightStr;
-                            if (commaIdx !== -1) {
-                                leftStr = inner.substring(0, commaIdx);
-                                rightStr = inner.substring(commaIdx + 1);
-                            } else {
-                                leftStr = inner;
-                                rightStr = '';
-                            }
-                            return {
-                                type: 'node',
-                                label: label || '',
-                                branch_length: branchLen,
-                                left: parseNode(leftStr),
-                                right: rightStr ? parseNode(rightStr) : null
-                            };
-                        } else {
-                            // Leaf
-                            let label = str;
-                            let branchLen = 0;
-                            if (str.includes(':')) {
-                                const parts = str.split(':');
-                                label = parts[0].trim();
-                                branchLen = parseFloat(parts[1]) || 0;
-                            }
-                            return { type: 'leaf', label: label, branch_length: branchLen };
+                // Recursively parse Newick into a tree data structure
+                function parseNode(str) {
+                    str = str.trim();
+                    if (str.startsWith('(')) {
+                        let depth = 0, splitPos = -1;
+                        for (let j = 0; j < str.length; j++) {
+                            if (str[j] === '(') depth++;
+                            else if (str[j] === ')') depth--;
+                            else if (str[j] === ',' && depth === 1 && splitPos === -1) splitPos = j;
                         }
+                        const closeParen = str.lastIndexOf(')');
+                        const afterParen = str.substring(closeParen + 1).trim();
+                        let label = '', blen = 0;
+                        if (afterParen.includes(':')) {
+                            const p = afterParen.split(':');
+                            label = p[0].trim();
+                            blen = parseFloat(p[1]) || 0;
+                        } else { label = afterParen; }
+                        const inner = str.substring(1, closeParen);
+                        let commaIdx = -1, dep = 0;
+                        for (let k = 0; k < inner.length; k++) {
+                            if (inner[k] === '(') dep++;
+                            else if (inner[k] === ')') dep--;
+                            else if (inner[k] === ',' && dep === 0) { commaIdx = k; break; }
+                        }
+                        const leftStr = inner.substring(0, commaIdx);
+                        const rightStr = inner.substring(commaIdx + 1);
+                        return { left: parseNode(leftStr), right: parseNode(rightStr), blen: blen, label: label };
+                    } else {
+                        let s2 = str;
+                        let blen = 0;
+                        if (s2.includes(':')) {
+                            const p = s2.split(':');
+                            s2 = p[0].trim();
+                            blen = parseFloat(p[1]) || 0;
+                        }
+                        // Clean leaf name - remove internal node markers
+                        if (s2.startsWith('Internal')) return null;
+                        return { leaf: s2, blen: blen };
                     }
-                    return parseNode(s);
                 }
 
-                const root = parseNewick(newickStr);
-                
-                // Calculate tree dimensions for SVG
-                function countLeaves(node) {
-                    if (!node) return 0;
-                    if (node.type === 'leaf') return 1;
-                    return countLeaves(node.left) + countLeaves(node.right);
-                }
-                
-                function maxDepth(node) {
-                    if (!node) return 0;
-                    if (node.type === 'leaf') return node.branch_length || 0.1;
-                    const left = maxDepth(node.left) + (node.left ? node.left.branch_length || 0 : 0);
-                    const right = node.right ? maxDepth(node.right) + (node.right.branch_length || 0) : 0;
-                    return Math.max(left, right);
-                }
-                
-                const numLeaves = countLeaves(root);
-                const treeDepth = maxDepth(root) || 1;
-                
-                // SVG dimensions
-                const leafSpacing = 30;
-                const topMargin = 30;
-                const leftMargin = 80;
-                const rightMargin = 150;
-                const widthPerUnit = 180 / treeDepth;
-                
-                const svgHeight = Math.max(200, numLeaves * leafSpacing + topMargin * 2);
-                const svgWidth = leftMargin + 200 + rightMargin;
-                
-                // Assign positions to leaves
-                let leafPositions = {};
-                let leafCounter = 0;
-                function assignLeafPos(node, x, y, parentX) {
-                    if (!node) return y;
-                    if (node.type === 'leaf') {
-                        leafPositions[node.label] = { x: leftMargin + (node.branch_length || 0.1) * widthPerUnit, y: y };
-                        return y + leafSpacing;
-                    }
-                    // Internal node
-                    const childY = y;
-                    const newY = assignLeafPos(node.left, x + (node.branch_length || 0) * widthPerUnit, y, x);
-                    const rightY = node.right ? assignLeafPos(node.right, x + (node.right.branch_length || 0) * widthPerUnit, newY, x) : newY;
-                    const midY = (y + (node.right ? newY : y)) / 2;
-                    // If leaf positions exist for children, compute mid
-                    return node.right ? rightY : newY;
-                }
-                
-                // Re-implement with better positioning
-                function layoutTree(node) {
-                    if (!node) return { height: 0, leaves: [], x: 0, y: 0 };
-                    const branch = node.branch_length || 0.1;
-                    if (node.type === 'leaf') {
-                        return { height: 1, leaves: [{ label: node.label, depth: branch, branch: branch }], x: 0, y: 0 };
-                    }
-                    const left = layoutTree(node.left);
-                    const right = node.right ? layoutTree(node.right) : { height: 0, leaves: [], x: 0, y: 0 };
-                    const totalLeaves = left.leaves.concat(right.leaves);
-                    const maxH = Math.max(left.height, right.height);
-                    
-                    // Assign Y positions
-                    const leftStart = (right.height - left.height) / 2;
-                    const leftLeaves = left.leaves.map((l, idx) => ({
-                        label: l.label,
-                        y: (leftStart + idx) * leafSpacing + topMargin,
-                        depth: l.depth + branch,
-                        branch: l.branch
-                    }));
-                    const rightLeaves = right.leaves.map((l, idx) => ({
-                        label: l.label,
-                        y: (left.height + idx) * leafSpacing + topMargin,
-                        depth: l.depth + branch,
-                        branch: l.branch
-                    }));
-                    
-                    return {
-                        height: left.height + right.height,
-                        leaves: leftLeaves.concat(rightLeaves),
-                        x: branch,
-                        y: 0
-                    };
-                }
-                
-                const layout = layoutTree(root);
-                const maxDepthVal = Math.max(...layout.leaves.map(l => l.depth));
-                const scaleX = 200 / (maxDepthVal || 1);
-                
-                let svg = '<svg width="' + svgWidth + '" height="' + svgHeight + '" xmlns="http://www.w3.org/2000/svg" class="w-full">';
-                
-                // Draw leaves and branches recursively
-                let lines = [];
-                let labels = [];
-                
-                function drawNode(node, x, yStart, yEnd) {
+                let s = newickStr.trim();
+                if (s.endsWith(';')) s = s.slice(0, -1).trim();
+                const root = parseNode(s);
+                if (!root || (!root.left && !root.right)) return '<p class="text-gray-500">Invalid tree structure.</p>';
+
+                // Collect leaves in order (left-to-right)
+                function getLeaves(node, arr) {
                     if (!node) return;
-                    const branch = (node.branch_length || 0.1) * scaleX;
-                    const newX = x + branch;
+                    if (node.leaf) { arr.push(node); return; }
+                    getLeaves(node.left, arr);
+                    getLeaves(node.right, arr);
+                }
+                const leaves = [];
+                getLeaves(root, leaves);
+                const n = leaves.length;
+                if (n === 0) return '<p class="text-gray-500">No leaves found.</p>';
+
+                // Layout parameters
+                const leafSpacing = 28;
+                const topPad = 30;
+                const leftPad = 30;
+                const rightLabelPad = 110;
+                const depthScale = 180; // max width for branches
+
+                // Find max total branch length from root to leaf
+                function calcMaxDepth(node, cur) {
+                    if (!node) return cur;
+                    if (node.leaf) return cur + (node.blen || 0.05);
+                    return Math.max(calcMaxDepth(node.left, cur + (node.blen || 0.05)), 
+                                    calcMaxDepth(node.right, cur + (node.blen || 0.05)));
+                }
+                const maxDepth = calcMaxDepth(root, 0) || 1;
+
+                // Assign Y positions to each leaf (order them properly)
+                let leafIndex = 0;
+                function assignLeafY(node) {
+                    if (!node) return;
+                    if (node.leaf) {
+                        node.y = topPad + leafIndex * leafSpacing;
+                        leafIndex++;
+                        return;
+                    }
+                    assignLeafY(node.left);
+                    assignLeafY(node.right);
+                }
+                assignLeafY(root);
+
+                // Now assign X positions recursively
+                // Each node gets an x position based on its depth from the root
+                function assignNodeX(node, parentX) {
+                    if (!node) return;
+                    const blen = node.blen || 0.05;
+                    node.x = parentX + blen * depthScale / maxDepth;
+                    assignNodeX(node.left, node.x);
+                    assignNodeX(node.right, node.x);
+                }
+                assignNodeX(root, leftPad);
+
+                // For internal nodes, set y to midpoint of children
+                function assignInternalY(node) {
+                    if (!node || node.leaf) return;
+                    assignInternalY(node.left);
+                    assignInternalY(node.right);
+                    node.y = (node.left.y + node.right.y) / 2;
+                }
+                assignInternalY(root);
+
+                // SVG dimensions
+                const minX = Math.max(...leaves.map(l => l.x || 0));
+                const svgW = Math.max(400, minX + rightLabelPad + 20);
+                const svgH = Math.max(200, topPad + n * leafSpacing + 20);
+
+                let svg = '<svg width="' + svgW + '" height="' + svgH + '" xmlns="http://www.w3.org/2000/svg" style="font-family:Arial,sans-serif;font-size:11px;">';
+                svg += '<g stroke="#374151" stroke-width="1.5" fill="none">';
+
+                // Draw branches recursively
+                function drawBranches(node) {
+                    if (!node || node.leaf) return;
+                    const x = node.x, y = node.y;
+                    const lx = node.left.x, ly = node.left.y;
+                    const rx = node.right.x, ry = node.right.y;
                     
-                    if (node.type === 'leaf') {
-                        // Horizontal line to leaf
-                        lines.push({ x1: x, y1: yStart, x2: newX, y2: yStart });
-                        // Label
-                        labels.push({ x: newX + 5, y: yStart + 4, text: node.label });
-                    } else {
-                        // Internal node
-                        if (node.left) {
-                            const leftLeaf = layout.leaves.find(l => 
-                                node.left.type === 'leaf' && l.label === node.left.label
-                            );
-                            // This is simplified - for a proper implementation we pass the leaf positions
-                        }
-                        
-                        // Draw children
-                        if (node.left && node.right) {
-                            // Get the leaf positions for left and right subtrees
-                            const leftLabels = node.left.type === 'leaf' ? 
-                                [node.left.label] : getAllLeafLabels(node.left);
-                            const rightLabels = node.right.type === 'leaf' ? 
-                                [node.right.label] : getAllLeafLabels(node.right);
-                            
-                            const leftYStart = getYForLabel(layout.leaves, leftLabels[0]);
-                            const leftYEnd = getYForLabel(layout.leaves, leftLabels[leftLabels.length - 1]);
-                            const rightYStart = getYForLabel(layout.leaves, rightLabels[0]);
-                            const rightYEnd = getYForLabel(layout.leaves, rightLabels[rightLabels.length - 1]);
-                            
-                            const leftMidY = (leftYStart + leftYEnd) / 2;
-                            const rightMidY = (rightYStart + rightYEnd) / 2;
-                            
-                            // Vertical line connecting children
-                            const vertY1 = Math.min(leftMidY, rightMidY);
-                            const vertY2 = Math.max(leftMidY, rightMidY);
-                            lines.push({ x1: newX, y1: vertY1, x2: newX, y2: vertY2 });
-                            
-                            // Horizontal lines to children
-                            lines.push({ x1: x, y1: leftMidY, x2: newX, y2: leftMidY });
-                            lines.push({ x1: x, y1: rightMidY, x2: newX, y2: rightMidY });
-                            
-                            // Recursively draw
-                            drawNode(node.left, newX, leftYStart, leftYEnd);
-                            drawNode(node.right, newX, rightYStart, rightYEnd);
-                        } else if (node.left) {
-                            // Single child - just pass through
-                            drawNode(node.left, newX, yStart, yEnd);
-                        }
+                    // Vertical line from node down to children's y-range
+                    const yTop = Math.min(ly, ry);
+                    const yBot = Math.max(ly, ry);
+                    if (yTop < yBot) {
+                        svg += '<line x1="' + x + '" y1="' + yTop + '" x2="' + x + '" y2="' + yBot + '"/>';
+                    }
+                    // Horizontal line to left child
+                    if (node.left) {
+                        svg += '<line x1="' + x + '" y1="' + ly + '" x2="' + lx + '" y2="' + ly + '"/>';
+                        drawBranches(node.left);
+                    }
+                    // Horizontal line to right child
+                    if (node.right) {
+                        svg += '<line x1="' + x + '" y1="' + ry + '" x2="' + rx + '" y2="' + ry + '"/>';
+                        drawBranches(node.right);
                     }
                 }
-                
-                function getAllLeafLabels(node) {
-                    if (!node) return [];
-                    if (node.type === 'leaf') return [node.label];
-                    return getAllLeafLabels(node.left).concat(node.right ? getAllLeafLabels(node.right) : []);
+                // Draw root stem (tiny)
+                if (root.left && root.right) {
+                    const rootY = (root.left.y + root.right.y) / 2;
+                    svg += '<line x1="' + (leftPad - 5) + '" y1="' + rootY + '" x2="' + root.x + '" y2="' + rootY + '"/>';
                 }
-                
-                function getYForLabel(leaves, label) {
-                    const found = leaves.find(l => l.label === label);
-                    return found ? found.y : topMargin;
+                drawBranches(root);
+
+                svg += '</g>'; // end stroke group
+
+                // Draw leaf labels
+                svg += '<g fill="#1f2937">';
+                for (const leaf of leaves) {
+                    const labelX = leaf.x + 8;
+                    const labelY = leaf.y + 4;
+                    svg += '<text x="' + labelX + '" y="' + labelY + '" font-size="12">' + leaf.leaf + '</text>';
                 }
-                
-                // Draw the tree
-                if (root) {
-                    const allLabels = layout.leaves.map(l => l.label);
-                    if (allLabels.length > 0) {
-                        const firstY = layout.leaves[0].y;
-                        const lastY = layout.leaves[layout.leaves.length - 1].y;
-                        const rootY = (firstY + lastY) / 2;
-                        
-                        lines.push({ x1: leftMargin, y1: rootY, x2: leftMargin + 5, y2: rootY });
-                        
-                        // Draw the root and its children
-                        if (root.left && root.right) {
-                            const leftLeafLabels = getAllLeafLabels(root.left);
-                            const rightLeafLabels = getAllLeafLabels(root.right);
-                            const leftY1 = getYForLabel(layout.leaves, leftLeafLabels[0]);
-                            const leftY2 = getYForLabel(layout.leaves, leftLeafLabels[leftLeafLabels.length - 1]);
-                            const rightY1 = getYForLabel(layout.leaves, rightLeafLabels[0]);
-                            const rightY2 = getYForLabel(layout.leaves, rightLeafLabels[rightLeafLabels.length - 1]);
-                            
-                            const leftMidY = (leftY1 + leftY2) / 2;
-                            const rightMidY = (rightY1 + rightY2) / 2;
-                            
-                            lines.push({ x1: leftMargin + 5, y1: leftMidY, x2: leftMargin + 10, y2: leftMidY });
-                            lines.push({ x1: leftMargin + 5, y1: rightMidY, x2: leftMargin + 10, y2: rightMidY });
-                            lines.push({ x1: leftMargin + 5, y1: leftMidY, x2: leftMargin + 5, y2: rightMidY });
-                            
-                            drawNode(root.left, leftMargin + 10, leftY1, leftY2);
-                            drawNode(root.right, leftMargin + 10, rightY1, rightY2);
-                        }
-                    }
-                    // Leaf labels at final positions
-                    layout.leaves.forEach(l => {
-                        labels.push({ x: svgWidth - rightMargin + 5, y: l.y + 4, text: l.label });
-                    });
-                }
-                
-                // Render lines
-                lines.forEach(l => {
-                    svg += '<line x1="' + l.x1 + '" y1="' + l.y1 + '" x2="' + l.x2 + '" y2="' + l.y2 + '" stroke="#374151" stroke-width="1.5"/>';
-                });
-                
-                // Render labels
-                labels.forEach(l => {
-                    svg += '<text x="' + l.x + '" y="' + l.y + '" font-size="11" fill="#1f2937">' + l.text + '</text>';
-                });
-                
+                svg += '</g>';
+
                 svg += '</svg>';
                 return svg;
-                
+
             } catch (e) {
                 return '<p class="text-red-500">Error rendering tree: ' + e.message + '</p>';
             }
