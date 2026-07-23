@@ -168,8 +168,12 @@ def neighbor_joining(distance_matrix, labels):
         return f"({labels[0]}:{distance_matrix[0][1]/2:.4f},{labels[1]}:{distance_matrix[0][1]/2:.4f})"
     
     # Convert to float and work with copies
-    D = [row[:] for row in distance_matrix]
-    ids = labels[:]
+    # Pre-allocate a larger matrix that can hold internal nodes (max size: n + n - 2 = 2n)
+    max_size = 2 * n
+    D = [[0.0] * max_size for _ in range(max_size)]
+    for i in range(n):
+        for j in range(n):
+            D[i][j] = distance_matrix[i][j]
     
     # Work with a list of current (remaining) taxa indices
     taxa = list(range(n))
@@ -177,7 +181,6 @@ def neighbor_joining(distance_matrix, labels):
     active = {i: labels[i] for i in range(n)}
     
     # Newick tree pieces: for each node, store (left_child, right_child, left_dist, right_dist)
-    # We'll build the tree bottom-up
     tree = {}
     next_id = n  # For naming internal nodes
     
@@ -190,7 +193,6 @@ def neighbor_joining(distance_matrix, labels):
             total_dist[i] = sum(D[i][j] for j in taxa)
         
         # Step 2: Calculate Q matrix (for this subset)
-        Q = {}
         min_q = float('inf')
         min_pair = None
         
@@ -199,7 +201,6 @@ def neighbor_joining(distance_matrix, labels):
                 if i >= j:
                     continue
                 q_val = (m - 2) * D[i][j] - total_dist[i] - total_dist[j]
-                Q[(i, j)] = q_val
                 if q_val < min_q:
                     min_q = q_val
                     min_pair = (i, j)
@@ -224,20 +225,14 @@ def neighbor_joining(distance_matrix, labels):
         }
         
         # Step 5: Calculate distances from u to all other active nodes
-        new_D_row = [0.0] * n
         for k in taxa:
             if k != i and k != j:
-                new_D_row[k] = 0.5 * (D[i][k] + D[j][k] - D[i][j])
+                D[u][k] = 0.5 * (D[i][k] + D[j][k] - D[i][j])
+                D[k][u] = D[u][k]
         
         # Step 6: Replace i and j with u
         taxa.remove(j)
         taxa.remove(i)
-        
-        # Update distance matrix for u
-        for k in taxa:
-            D[u][k] = new_D_row[k]
-            D[k][u] = new_D_row[k]
-        
         taxa.append(u)
         active[u] = f"Internal{u}"
     
@@ -255,11 +250,7 @@ def neighbor_joining(distance_matrix, labels):
 def _build_newick(i, j, dist, tree, active):
     """Build Newick string recursively."""
     def get_subtree(node, branch_length=0):
-        if node in active and node < len(active) - 1:
-            # Check if it's a leaf (original label)
-            if isinstance(active[node], str) and not active[node].startswith("Internal"):
-                return f"{active[node]}:{branch_length:.4f}"
-        
+        # Check internal nodes first
         if node in tree:
             left = tree[node]['left']
             right = tree[node]['right']
@@ -274,8 +265,8 @@ def _build_newick(i, j, dist, tree, active):
         return f"{name}:{branch_length:.4f}"
     
     # Handle the final two nodes
-    left_str = get_subtree(i, 0)
-    right_str = get_subtree(j, 0)
+    left_str = get_subtree(i, dist/2)
+    right_str = get_subtree(j, dist/2)
     return f"({left_str},{right_str});"
 
 
