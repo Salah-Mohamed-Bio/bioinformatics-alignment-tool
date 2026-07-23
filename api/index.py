@@ -148,9 +148,9 @@ def align():
 
     seq1 = data.get("seq1", "").strip().upper()
     seq2 = data.get("seq2", "").strip().upper()
-    match = data.get("match", 5)
-    mismatch = data.get("mismatch", -1)
-    gap = data.get("gap", -3)
+    match = data.get("match", 2)
+    mismatch = data.get("mismatch", -3)
+    gap = data.get("gap", -5)
     mode = data.get("mode", "global")
 
     try:
@@ -176,9 +176,9 @@ def align_fasta():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-    match = request.form.get("match", 5, type=int)
-    mismatch = request.form.get("mismatch", -1, type=int)
-    gap = request.form.get("gap", -3, type=int)
+    match = request.form.get("match", 2, type=int)
+    mismatch = request.form.get("mismatch", -3, type=int)
+    gap = request.form.get("gap", -5, type=int)
     mode = request.form.get("mode", "global")
 
     try:
@@ -213,9 +213,9 @@ def align_batch():
     if len(records) > 20:
         return jsonify({"error": "Maximum 20 sequences allowed for batch alignment."}), 400
 
-    match = request.form.get("match", 5, type=int)
-    mismatch = request.form.get("mismatch", -1, type=int)
-    gap = request.form.get("gap", -3, type=int)
+    match = request.form.get("match", 2, type=int)
+    mismatch = request.form.get("mismatch", -3, type=int)
+    gap = request.form.get("gap", -5, type=int)
 
     ids = [r[0] for r in records]
     seqs = [r[1] for r in records]
@@ -304,9 +304,9 @@ def phylogeny():
     if len(records) > 15:
         return jsonify({"error": "Maximum 15 sequences allowed for tree building."}), 400
 
-    match = request.form.get("match", 5, type=int)
-    mismatch = request.form.get("mismatch", -1, type=int)
-    gap = request.form.get("gap", -3, type=int)
+    match = request.form.get("match", 2, type=int)
+    mismatch = request.form.get("mismatch", -3, type=int)
+    gap = request.form.get("gap", -5, type=int)
 
     ids = [r[0] for r in records]
     seqs = [r[1] for r in records]
