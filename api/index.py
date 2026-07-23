@@ -231,14 +231,21 @@ def align_batch():
             }), 400
 
     # Estimate if it will timeout (n sequences × n comparisons × seq_length²)
-    # Rough estimate: each comparison of ~1000bp takes ~0.1s on Vercel
+    # Actual Vercel performance: ~0.005s per 1000bp comparison
     estimated_pairs = (n * (n + 1)) / 2
-    estimated_time = estimated_pairs * (max(len(s) for s in seqs) / 1000) ** 2 * 0.03
-    if estimated_time > 8:
+    max_seq_len = max(len(s) for s in seqs)
+    estimated_time = estimated_pairs * (max_seq_len / 1000) ** 2 * 0.005
+    if estimated_time > 9:
         return jsonify({
             "error": f"Too many/long sequences for Vercel's 10-second timeout. "
                      f"Estimated time: {estimated_time:.1f}s. "
-                     f"Please use fewer sequences (max {n-1}) or shorter ones, or run locally."
+                     f"Please use fewer sequences or shorter ones, or run locally."
+        }), 400
+    # Also reject if total pairs exceed reasonable limit
+    if estimated_pairs > 100 and max_seq_len > 1500:
+        return jsonify({
+            "error": f"Too many sequences ({n}) and long sequences ({max_seq_len}bp). "
+                     f"Please use at most 10 sequences or reduce length to 1500bp."
         }), 400
 
     matrix = []
@@ -251,7 +258,7 @@ def align_batch():
                 else:
                     # Check remaining time
                     elapsed = time.time() - start_time
-                    if elapsed > 8:
+                    if elapsed > 9:
                         raise TimeoutError("Vercel 10-second timeout approaching. Please use fewer/shorter sequences.")
                     _, _, score = global_alignment(seqs[i], seqs[j], match, mismatch, gap)
                     row.append(score)
@@ -327,7 +334,7 @@ def phylogeny():
             row = []
             for j in range(n):
                 elapsed = time.time() - start_time
-                if elapsed > 8:
+                if elapsed > 9:
                     raise TimeoutError("Vercel timeout approaching. Please use fewer/shorter sequences.")
                 if j < i:
                     row.append(similarity_matrix[j][i])
